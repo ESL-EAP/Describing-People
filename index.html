@@ -26,6 +26,7 @@
   --good:#5fd38f; --good-soft:#14361f; --bad:#f08a72; --bad-soft:#3b1d16;
   --warm:#33290f; --warm-line:#d39a2c; --night:#0a1218; --on-night:#e4eef3; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font:18px/1.5 var(--body);margin:0}
 .wrap{max-width:900px;margin:0 auto;padding-block:0 110px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 h1,h2,h3{font-family:var(--display);line-height:1.1;text-wrap:balance;margin:0}
@@ -120,6 +121,16 @@ audio{width:100%}
 .menu{display:grid;gap:8px}
 .menu button{text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:10px}
 .small{font-size:.9rem;color:var(--muted)}
+.slowbtn{font:inherit;font-weight:700;font-size:.8rem;padding:4px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.slowbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.prgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.pr{display:grid;gap:10px}
+.pr .w{font-family:var(--display);font-size:1.8rem;font-weight:800}
+.pr .sy{color:var(--muted);font-weight:700;letter-spacing:.04em}
+.pr .row{display:flex;gap:8px;flex-wrap:wrap}
+.pr .heard{font-size:.9rem}
+.cando{display:grid;gap:10px}
+.cando .card{display:grid;gap:10px}
 .steps{display:flex;gap:6px;flex-wrap:wrap}
 .steps button{font:inherit;font-weight:700;font-size:.9rem;padding:6px 12px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
 .steps button[aria-current="step"]{border-color:var(--accent);color:var(--accent)}
@@ -162,7 +173,7 @@ audio{width:100%}
 <body>
 
 <div class="wrap">
-  <div class="top" id="top"><div class="row"><span class="task" id="tLabel"></span><span id="tCount"></span></div><div class="track"><div class="fill" id="fill"></div></div></div>
+  <div class="top" id="top"><div class="row"><span class="task" id="tLabel"></span><span style="display:flex;gap:10px;align-items:center"><button type="button" class="slowbtn" id="slow" aria-pressed="false">Slow audio</button><span id="tCount"></span></span></div><div class="track"><div class="fill" id="fill"></div></div></div>
   <main id="app" aria-live="polite"></main>
 </div>
 <div class="nav"><div class="in"><button class="btn ghost" id="back" type="button">Back</button><button class="btn" id="next" type="button">Next</button></div></div>
@@ -181,7 +192,7 @@ var PLAY='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 
 var hasTTS='speechSynthesis' in window;
 function speak(text,btn){
   if(!hasTTS){alertBox(btn,text);return}
-  try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='en-CA';u.rate=.85;
+  try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='en-CA';u.rate=S.slow?.6:.85;
     var v=speechSynthesis.getVoices().filter(function(x){return /^en/.test(x.lang)});
     var pref=v.filter(function(x){return /Google|Natural|Samantha|Jenny|Aria/.test(x.name)})[0]||v[0]; if(pref)u.voice=pref;
     if(btn){btn.classList.add('playing');u.onend=u.onerror=function(){btn.classList.remove('playing')}}
@@ -224,6 +235,14 @@ var ROLES=[
  {r:'Local Contact',d:'Welcomes the journalist, builds trust, knows the area, and offers practical help.'},
  {r:'Skeptical Witness',d:'Stays calm, asks for proof, and does not believe a story immediately.'}];
 var RQ=[['This person asks for proof and does not believe a story immediately.',4],['This person checks information carefully and notices small details.',1],['This person welcomes visitors and offers practical help.',3],['This person speaks clearly and keeps listeners interested.',2],['This person asks direct questions and keeps looking for answers.',0]];
+var ASCRIPT={
+ Alex:'Hi, I’m Alex. I like finding answers. When I have a question, I ask people directly. If the first person doesn’t know, I keep asking and look for another way to find out. I don’t give up easily.',
+ Mina:'Hello, I’m Mina. I enjoy reading and solving puzzles. When I look at information, I write down small details and check them carefully. I often listen first and speak after I understand the whole problem.',
+ Jordan:'Hi, I’m Jordan. I make short audio stories for my college club. I speak clearly, explain what is happening, and ask people interesting questions. I like sharing stories with an audience.',
+ Priya:'Hi, I’m Priya. I know many people in my neighbourhood. When someone visits for the first time, I introduce them to people and show them where to go. If they need something, I try to help.',
+ Ben:'Hello, I’m Ben. If someone tells me a surprising story, I ask how they know it is true. I like to check facts and hear more than one side before I decide what I think.',
+ Taylor:'Hi, I’m Taylor. I enjoy talking with people and learning their stories. I often start conversations with strangers, and I can keep a conversation going for a long time. I like being around people.',
+ Sam:'Hello, I’m Sam. When a group is worried, I take a moment, listen, and speak calmly. I don’t rush to make a decision. I like to think about what could happen next before I act.'};
 var TRAITS=['friendly','helpful','rude','impatient','quiet','talkative','confident','patient','careful','curious'];
 var VOCAB=[['friendly','kind and welcoming','positive'],['helpful','ready to help','positive'],['rude','not polite or kind','negative'],['impatient','gets annoyed when waiting','negative'],['quiet','does not speak much','depends'],['talkative','speaks a lot','depends']];
 /* ---------- illustrations (original SVG scenes) ---------- */
@@ -321,10 +340,13 @@ function buildWork(certSrc){
   sec('Task 2 · Personality words');it('Listening quiz',score('t2q')+' / 6 correct on the first try');it('About me','I am '+(S.meWord||'___')+' because '+(S.meWhy||'___').replace(/^because\s*/i,''),'meWhy');
   sec('Task 3 · Describing people');it('has / is wearing quiz',score('hw')+' / 4');it('Listen and find the person',score('find')+' / 6');
   BUILD.forEach(function(ai,i){it('My description of '+A[ai].n,S['say_'+i]||'','say_'+i)});
+  it('Guess who?',score('guess')+' / 5');if(S.secret!=null)it('My secret person ('+A[S.secret].n+')',S['secret_'+S.secret]||'','secret_'+S.secret);
+  sec('Pronunciation');['wearing','moustache','curly','sweater','straight','glasses','striped','beard'].forEach(function(w){if(REC['pr_'+w])it(w,'(my recording)','pr_'+w)});
   sec('Task 4 · The Last Call');it('Role quiz',score('rq')+' / 5');
   A.forEach(function(a){var t=(S.at||{})[a.n]||{tr:[]};it(a.n+' — what I see',S['see_'+a.n]||t.see||'','see_'+a.n);it(a.n+' — what they do',S['do_'+a.n]||t.do||'','do_'+a.n);if(t.tr.length)it(a.n+' — personality words',t.tr.join(', '))});
   ROLES.forEach(function(r,i){it('Cast: '+r.r,(S.cast&&S.cast[i]?S.cast[i]:'—')+(S['why_'+i]?' — '+S['why_'+i]:''),'why_'+i)});
   it('Our pitch',S.pitch||'','pitch');
+  sec('What I can do now');var LB={yes:'Yes, I can',almost:'Almost',not:'Not yet'};(CANS.length?CANS:['I can talk about first impressions.','I can use personality words.','I can describe hair, face, and clothes with has and is wearing.','I can listen for actions and guess someone’s personality.','I can give a reason with because.']).forEach(function(c,i){it(c,LB[(S.can||{})[i]]||'—')});if(S.goal)it('I want to practise',S.goal);
   return Promise.all(items.map(function(x){return x.k&&REC[x.k]&&REC[x.k].blob?blobToData(REC[x.k].blob).then(function(d){x.a=d;return x}):Promise.resolve(x)})).then(function(list){
     var nrec=list.filter(function(x){return x.a}).length;
     var body=list.map(function(x){if(x.h)return '<h2>'+esc(x.h)+'</h2>';return '<div class="it"><b>'+esc(x.l)+'</b><p>'+(x.t?esc(x.t):'<i>(no written answer)</i>')+'</p>'+(x.a?'<audio controls src="'+x.a+'"></audio>':'')+'</div>'}).join('');
@@ -449,7 +471,7 @@ function quiz(key,items,renderQ,check,onDone){
 /* ---------- screens ---------- */
 var screens=[
 {t:'Welcome',draw:function(m){m.innerHTML='<div class="card" style="display:grid;gap:14px"><div class="small" style="font-weight:700;color:var(--accent)">English speaking &amp; listening · CLB 4–5</div><h1>Describing People</h1><p class="lead">Personality words, physical appearance, and a movie-casting challenge.</p><div><label for="sname">What is your name?</label><input type="text" id="sname" data-k="name" autocomplete="name"></div><p class="small">Use headphones if you can. Your answers save in this browser. Press <b>Next</b> to start.</p></div><div class="card"><h3 style="margin-bottom:10px">Jump to a task</h3><div class="menu" id="menu"></div></div>';
-  var tasks=[['Task 1 · First impressions',1],['Task 2 · Personality words',3],['Task 3 · Describing people',6],['Task 4 · The Last Call',10],['Certificate',15]];
+  var tasks=[['Task 1 · First impressions',1],['Task 2 · Personality words',3],['Task 3 · Describing people',6],['Task 4 · The Last Call',12],['Certificate',18]];
   $('#menu').innerHTML=tasks.map(function(t){return '<button type="button" data-go="'+t[1]+'"><b>'+t[0]+'</b><span aria-hidden="true">→</span></button>'}).join('');
   $$('[data-go]').forEach(function(b){b.onclick=function(){go(+b.getAttribute('data-go'))}});}},
 
@@ -517,6 +539,29 @@ var screens=[
   SUB={more:function(){return S.tp<C.length-1},word:function(){return 'Next: '+C[S.tp+1].h},next:function(){S.tp++;save();d();scrollTo(0,0)},canBack:function(){return S.tp>0},back:function(){S.tp--;save();d();scrollTo(0,0)}};
   d();}},
 
+{t:'Task 3 · Pronunciation',draw:function(m){
+  var W=[['wearing','WAIR-ing','She is wearing a jacket.'],['moustache','MUS-tash','He has a moustache.'],['curly','KUR-lee','She has curly hair.'],['sweater','SWET-er','He is wearing a sweater.'],['straight','STRAYT','She has straight hair.'],['glasses','GLASS-iz','He has glasses.'],['striped','STRYPT','They are wearing a striped shirt.'],['beard','BEERD','He has a beard.']];
+  m.innerHTML='<h2>Say it clearly</h2><p class="lead">Listen to the word. Record yourself. Then press <b>Compare</b> to hear the model and your voice.</p><div class="prgrid">'+W.map(function(w,i){return '<div class="card pr" data-pr="'+i+'"><div><span class="w">'+w[0]+'</span> <span class="sy">'+w[1]+'</span></div><p class="small">'+esc(w[2])+'</p><div class="row"><button type="button" class="btn ghost sm" data-pl>'+PLAY+'Listen</button><button type="button" class="btn ghost sm" data-prc>'+MIC+'<span>Record</span></button></div><div class="row" data-mine hidden><button type="button" class="btn ghost sm" data-pm>My voice</button><button type="button" class="btn sm" data-cmp>Compare</button></div><span class="heard small" aria-live="polite"></span></div>'}).join('')+'</div><p class="small">Tip: say the word slowly first, then at normal speed. The <b>Slow audio</b> button at the top makes the model slower.</p>';
+  $$('[data-pr]',m).forEach(function(card){var i=+card.dataset.pr,w=W[i],key='pr_'+w[0],hd=$('.heard',card),mine=$('[data-mine]',card),rb=$('[data-prc]',card);
+    function showMine(){mine.hidden=!REC[key]}
+    showMine();
+    $('[data-pl]',card).onclick=function(){speak(w[0],this)};
+    function playMine(cb){var r=REC[key];if(!r)return;var au=new Audio(r.url);au.playbackRate=1;au.onended=cb||null;au.play().catch(function(){})}
+    $('[data-pm]',card).onclick=function(){playMine()};
+    $('[data-cmp]',card).onclick=function(){if(!hasTTS){playMine();return}try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(w[0]);u.lang='en-CA';u.rate=S.slow?.6:.85;u.onend=function(){setTimeout(function(){playMine()},400)};speechSynthesis.speak(u)}catch(e){playMine()}};
+    rb.onclick=function(){if(card._rec){card._rec.stop();return}
+      if(!navigator.mediaDevices||!window.MediaRecorder){hd.textContent='Recording is not available in this browser.';return}
+      navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){var chunks=[],mr=new MediaRecorder(stream),sr=null,got='';
+        mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+        mr.onstop=function(){stream.getTracks().forEach(function(t){t.stop()});var type=mr.mimeType||'audio/webm',bl=new Blob(chunks,{type:type});if(REC[key])URL.revokeObjectURL(REC[key].url);REC[key]={url:URL.createObjectURL(bl),type:type,blob:bl};idbPut(key,bl,type);
+          if(sr)try{sr.stop()}catch(e){}card._rec=null;rb.classList.remove('rec-on');$('span',rb).textContent='Record again';showMine();
+          setTimeout(function(){var ok=norm(got).indexOf(' '+w[0])>-1;hd.innerHTML=got?(ok?'<b style="color:var(--good)">Clear! We heard “'+esc(got.trim())+'”.</b>':'We heard “'+esc(got.trim())+'”. Listen to the model and try again.'):(SR?'Press <b>Compare</b> to check your voice.':'Press <b>Compare</b> to check your voice.')},600)};
+        if(SR){try{sr=new SR();sr.lang='en-CA';sr.interimResults=false;sr.maxAlternatives=3;sr.onresult=function(e){var r=e.results[0];got=r[0].transcript;for(var k=0;k<r.length;k++){if(norm(r[k].transcript).indexOf(' '+w[0])>-1){got=r[k].transcript;break}}};sr.onerror=function(){};sr.start()}catch(e){sr=null}}
+        mr.start();card._rec=mr;rb.classList.add('rec-on');$('span',rb).textContent='Stop';hd.textContent='Say: '+w[0];
+        setTimeout(function(){if(card._rec===mr)mr.stop()},4000);
+      },function(){hd.textContent='The microphone is blocked. Allow the microphone in your browser.'})};
+  });}},
+
 {t:'Task 3 · Describing people',draw:function(m){
   m.innerHTML='<h2>has or is wearing?</h2><div class="grid2"><div class="card"><p><b>has</b> → hair, glasses</p><p class="small">She <b>has</b> curly hair. He <b>has</b> glasses.</p></div><div class="card"><p><b>is wearing</b> → clothes</p><p class="small">She <b>is wearing</b> a green sweater.</p></div></div><div class="phr"><b>Useful words</b>long · short · curly · straight · wavy · glasses · a jacket · a sweater · a shirt · a scarf · striped</div><div id="hw"></div>';
   quiz('hw',HASW,function(q,i){var a=A[[1,2,0,6][i]];return '<div class="card actorview" style="grid-template-columns:minmax(0,160px) minmax(0,1fr)"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:12px;align-content:center"><p class="sentence">'+esc(q[0]).replace('___','<span class="blank">?</span>')+'</p><div class="chips"><button type="button" class="chip" data-ans="has">has</button><button type="button" class="chip" data-ans="is wearing">is wearing</button></div></div></div>'},
@@ -550,6 +595,18 @@ var screens=[
   SUB={more:function(){return S.bi<BUILD.length-1},word:function(){return 'Next person'},next:function(){S.bi++;save();d();scrollTo(0,0)},canBack:function(){return S.bi>0},back:function(){S.bi--;save();d();scrollTo(0,0)}};
   d();}},
 
+{t:'Task 3 · Guess who?',draw:function(m){
+  var G=[['This person has short hair and a beard. He is wearing a grey shirt. He doesn’t have glasses.',4],['This person has long, curly hair. She is wearing a black jacket.',5],['This person has short, curly hair and glasses.',0],['This person has curly hair. She is wearing a scarf.',3],['This person has short, wavy hair. They are wearing a striped shirt.',6]];
+  m.innerHTML='<h2>Guess who?</h2><p class="lead">Read the description (or press Listen). Tap the person.</p><div id="gw"></div><div id="gw2"></div>';
+  quiz('guess',G,function(q,i){return '<div class="card" style="display:grid;gap:14px"><p class="model" style="font-size:1.2rem">'+esc(q[0])+'</p><div><button type="button" class="listen" data-say="g'+i+'">'+PLAY+'Listen</button><p class="small tts-fallback" hidden></p></div><div class="photos">'+A.map(function(a,k){return '<button type="button" class="ph" data-ans="'+k+'" aria-label="'+a.n+'"><img src="'+img(a)+'" alt=""></button>'}).join('')+'</div></div>'},
+    function(q,a){return +a===q[1]?{ok:true,msg:'Yes! It’s '+A[q[1]].n+'.'}:{ok:false,msg:'Not '+A[+a].n+'. Read the description again.'}},
+    function(){return ''})($('#gw'));
+  SAY=function(id){return G[+id.slice(1)][0]};
+  function part2(){var k=S.secret;
+    $('#gw2').innerHTML='<div class="card" style="display:grid;gap:12px;margin-top:16px"><h3>Your turn: describe a secret person</h3><p>Choose one person. Don’t say the name! Describe them. Then your partner guesses.</p><div class="thumbs">'+A.map(function(a,i){return '<button type="button" class="thumb" data-sec="'+i+'" aria-pressed="'+(k===i)+'"><img src="'+img(a)+'" alt="">'+a.n+'</button>'}).join('')+'</div>'+(k!=null?AB('secret_'+k,'Describe '+A[k].n+' (without the name): has … is wearing …','This person has … hair. This person is wearing …','describe',k):'')+'</div>';
+    $$('[data-sec]',m).forEach(function(b){b.onclick=function(){S.secret=+b.dataset.sec;save();part2()}});bindInputs(m);wireAB(m);}
+  part2();}},
+
 {t:'Task 4 · The Last Call',draw:function(m){
   m.innerHTML='<div class="story"><div class="small" style="color:inherit;opacity:.8;font-weight:700;letter-spacing:.1em;text-transform:uppercase">A mystery movie</div><div class="time">11:47 p.m.</div><div class="vm" id="vm"><button type="button" class="listen" data-say="story" style="background:var(--accent);color:var(--on-accent)">'+PLAY+'Play the story</button><span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div><p class="small tts-fallback" hidden></p><p>A journalist receives a voicemail from a person who disappeared ten years ago. The message gives one clue and says:</p><blockquote>“Don’t trust the person who finds me first.”</blockquote><p>The journalist has until morning to find out who sent the message.</p></div><div class="card"><h3 style="margin-bottom:6px">Your job</h3><p>You are the <b>casting team</b>. There are <b>5 roles</b> and <b>7 actors</b>. Two actors will not be cast.</p></div>';
   SAY=function(){return STORY};}},
@@ -563,12 +620,14 @@ var screens=[
   S.ai=S.ai||0;S.at=S.at||{};
   function d(){var a=A[S.ai],t=S.at[a.n]=S.at[a.n]||{tr:[]};
     m.innerHTML='<h2>Meet the actors</h2><p class="lead">Look, listen, and take notes. The actors do not say personality words — you decide!</p><div class="photos" style="grid-template-columns:repeat(7,minmax(0,1fr))">'+A.map(function(x,k){var done=S.at[x.n]&&S.at[x.n].tr.length;return '<button type="button" class="ph'+(k===S.ai?' sel':'')+'" data-a="'+k+'" aria-label="'+x.n+'"><img src="'+img(x)+'" alt="">'+(done?'<span>✓</span>':'')+'</button>'}).join('')+'</div>'+
-    '<div class="card actorview"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:14px"><div><div class="small" style="font-weight:700;letter-spacing:.1em;text-transform:uppercase">Actor '+(S.ai+1)+' of 7</div><h2>'+a.n+'</h2></div><audio controls preload="none" src="audio/'+a.f+'_introduction.mp3"></audio>'+
+    '<div class="card actorview"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:14px"><div><div class="small" style="font-weight:700;letter-spacing:.1em;text-transform:uppercase">Actor '+(S.ai+1)+' of 7</div><h2>'+a.n+'</h2></div><audio controls preload="none" id="aaud" src="audio/'+a.f+'_introduction.mp3"></audio><div><button type="button" class="btn ghost sm" id="trb"'+((S.heard||{})[a.n]?'':' hidden')+'>Show what they said</button><p class="small" id="trh"'+((S.heard||{})[a.n]?' hidden':'')+'>Listen to the end first. Then you can read what they said.</p><div class="card" id="trx" hidden style="background:var(--bg);margin-top:8px"><p>'+esc(ASCRIPT[a.n])+'</p></div></div>'+
     AB('see_'+a.n,'What do you see?','hair, glasses, clothes','see',a.n,60)+AB('do_'+a.n,'What do they do? (listen to the audio)','actions you hear','does',a.n,60)+'<div><div><p class="small" style="margin-bottom:6px"><b>Personality words</b> — tap one or more</p><div class="chips">'+TRAITS.map(function(w){return '<button type="button" class="chip" data-t="'+w+'" aria-pressed="'+(t.tr.indexOf(w)>-1)+'">'+w+'</button>'}).join('')+'</div></div>'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap">'+(S.ai>0?'<button type="button" class="btn ghost" id="pa">Previous actor</button>':'')+(S.ai<6?'<button type="button" class="btn" id="na">Next actor</button>':'<p class="fb good">All seven actors done? Press Next to cast the movie.</p>')+'</div></div></div>';
     if(t.see&&S['see_'+a.n]==null)S['see_'+a.n]=t.see;if(t.do&&S['do_'+a.n]==null)S['do_'+a.n]=t.do;bindInputs(m);wireAB(m);
     $$('[data-t]',m).forEach(function(b){b.onclick=function(){var w=b.dataset.t,k=t.tr.indexOf(w);if(k>-1)t.tr.splice(k,1);else t.tr.push(w);save();b.setAttribute('aria-pressed',k<0)}});
     $$('[data-a]',m).forEach(function(b){b.onclick=function(){S.ai=+b.dataset.a;save();d()}});
+    $('#aaud').addEventListener('ended',function(){S.heard=S.heard||{};S.heard[a.n]=1;save();$('#trb').hidden=false;$('#trh').hidden=true});
+    $('#trb').onclick=function(){var x=$('#trx');x.hidden=!x.hidden;this.textContent=x.hidden?'Show what they said':'Hide what they said'};
     var na=$('#na');if(na)na.onclick=function(){S.ai++;save();d();scrollTo(0,0)};var pa=$('#pa');if(pa)pa.onclick=function(){S.ai--;save();d();scrollTo(0,0)};
   }
   SUB={more:function(){return S.ai<A.length-1},word:function(){return 'Next actor'},next:function(){S.ai++;save();d();scrollTo(0,0)},canBack:function(){return S.ai>0},back:function(){S.ai--;save();d();scrollTo(0,0)}};
@@ -586,6 +645,7 @@ var screens=[
   d();}},
 
 {t:'Task 4 · Your pitch',draw:function(m){
+  S.cast=S.cast||{};
   var lines=ROLES.map(function(r,i){return S.cast[i]?'<li><b>'+esc(S.cast[i])+'</b> as '+r.r+(S['why_'+i]?' — '+esc(S['why_'+i]):'')+'</li>':''}).join('');
   m.innerHTML='<h2>Present your cast</h2>'+(lines?'<div class="card"><ul style="margin:0;padding-left:20px;display:grid;gap:6px">'+lines+'</ul></div>':'<p class="note">Go back and cast the movie first.</p>')+
   '<div class="phr"><b>Pitch frames</b>We choose ___ for the role of ___ because ___. · They have ___ hair and are wearing ___. · In the introduction, they said they ___. · We think they seem ___ because ___. · We did not cast ___ because ___.</div><div class="card">'+AB('pitch','Our pitch — say it or write it','We choose … for the role of … because …','pitch',null,130)+'</div><div class="phr"><b>Discuss</b>I agree because… · I have a different choice because… · Which action shows that? · Another actor could fit because…</div>'+
@@ -594,9 +654,17 @@ var screens=[
   $('#copy').onclick=function(){var L=['DESCRIBING PEOPLE — '+(S.name||'(no name)'),'','Task 1 · I notice '+(S.poll||'—')+' first.',S.t1notes?'Discussion: '+S.t1notes:'','','Task 2 score: '+score('t2q')+' / 6','About me: I am '+(S.meWord||'___')+' because I '+(S.meWhy||'___'),'','Task 3 · has/is wearing: '+score('hw')+' / 4 · Find the person: '+score('find')+' / 6','','Actor notes:'];
     A.forEach(function(a){var t=(S.at||{})[a.n]||{tr:[]};L.push('- '+a.n+' | see: '+(S['see_'+a.n]||t.see||'')+' | does: '+(S['do_'+a.n]||t.do||'')+' | traits: '+t.tr.join(', '))});
     L.push('','Cast:');ROLES.forEach(function(r,i){L.push('- '+r.r+': '+(S.cast[i]||'—')+(S['why_'+i]?' ('+S['why_'+i]+')':''))});
-    L.push('','Pitch: '+(S.pitch||''));var txt=L.join('\n'),o=$('#cout'),msg=$('#cmsg');o.value=txt;
+    L.push('','Pitch: '+(S.pitch||''),'','Guess who: '+score('guess')+' / 5');var txt=L.join('\n'),o=$('#cout'),msg=$('#cmsg');o.value=txt;
     function fb(){o.hidden=false;o.focus();o.select();msg.textContent='Select all the text and copy it.'}
     try{navigator.clipboard.writeText(txt).then(function(){msg.textContent='Copied! Now paste it for your teacher.'},fb)}catch(e){fb()}};}},
+
+{t:'Check yourself',draw:function(m){
+  var C=['I can talk about first impressions.','I can use personality words (friendly, helpful, rude, impatient, quiet, talkative).','I can describe hair, face, and clothes with has and is wearing.','I can listen for actions and guess someone’s personality.','I can give a reason with because.'];
+  S.can=S.can||{};var L=[['yes','Yes, I can'],['almost','Almost'],['not','Not yet']];
+  function d(){m.innerHTML='<h2>What can you do now?</h2><p class="lead">Be honest. This helps you and your teacher.</p><div class="cando">'+C.map(function(c,i){return '<div class="card"><p><b>'+esc(c)+'</b></p><div class="chips">'+L.map(function(l){return '<button type="button" class="chip" data-cq="'+i+'" data-v="'+l[0]+'" aria-pressed="'+(S.can[i]===l[0])+'">'+l[1]+'</button>'}).join('')+'</div></div>'}).join('')+'</div>'+
+    '<div class="card"><label for="ab_goal">One thing I want to practise more:</label><input type="text" id="ab_goal" data-k="goal" placeholder="Example: using is wearing"></div>';
+    $$('[data-cq]',m).forEach(function(b){b.onclick=function(){S.can[b.dataset.cq]=b.dataset.v;save();var y=scrollY;d();scrollTo(0,y)}});bindInputs(m)}
+  CANS=C;d();}},
 
 {t:'Certificate',draw:function(m){
   var today=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
@@ -633,7 +701,7 @@ var screens=[
 function score(k){var s=S[k];return s?s.res.filter(function(x){return x===true}).length:0}
 
 /* ---------- shell ---------- */
-var SUB=null,SAY=null,cur=Math.min(S.cur||0,screens.length-1);
+var CANS=[],SUB=null,SAY=null,cur=Math.min(S.cur||0,screens.length-1);
 function bindInputs(root){$$('[data-k]',root).forEach(function(el){if(S[el.dataset.k]!=null)el.value=S[el.dataset.k];el.addEventListener('input',function(){S[el.dataset.k]=el.value;save()})})}
 function wire(root){$$('[data-say]',root).forEach(function(b){b.onclick=function(){var t=SAY&&SAY(b.dataset.say);if(!t)return;var vm=b.closest('.vm');if(vm){vm.classList.add('playing');setTimeout(function(){vm.classList.remove('playing')},14000)}speak(t,b)}})}
 function go(i){try{speechSynthesis.cancel()}catch(e){}cur=Math.max(0,Math.min(screens.length-1,i));S.cur=cur;save();render();scrollTo(0,0)}
@@ -644,6 +712,9 @@ function navLabel(){var sub=SUB&&SUB.more();$('#back').disabled=cur===0&&!(SUB&&
 $('#back').onclick=function(){if(SUB&&SUB.canBack()){SUB.back();navLabel();return}go(cur-1)};
 $('#next').onclick=function(){if(SUB&&SUB.more()){SUB.next();navLabel();return}go(cur===screens.length-1?0:cur+1)};
 new MutationObserver(function(){if(typeof navLabel==='function')navLabel()}).observe($('#app'),{childList:true,subtree:true});
+function applySlow(){var b=$('#slow');if(b)b.setAttribute('aria-pressed',!!S.slow);$$('audio').forEach(function(a){a.playbackRate=S.slow?.75:1})}
+document.addEventListener('play',function(e){if(e.target&&e.target.tagName==='AUDIO')e.target.playbackRate=S.slow?.75:1},true);
+$('#slow').onclick=function(){S.slow=!S.slow;save();applySlow()};applySlow();
 render();
 })();
 </script>
