@@ -120,6 +120,21 @@ audio{width:100%}
 .menu{display:grid;gap:8px}
 .menu button{text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:10px}
 .small{font-size:.9rem;color:var(--muted)}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.steps button{font:inherit;font-weight:700;font-size:.9rem;padding:6px 12px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.steps button[aria-current="step"]{border-color:var(--accent);color:var(--accent)}
+.steps button.done{background:var(--accent-soft);color:var(--ink)}
+.teach{display:grid;grid-template-columns:minmax(0,240px) minmax(0,1fr);gap:22px;align-items:start}
+.teach img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;display:block}
+@media (max-width:640px){.teach{grid-template-columns:1fr}.teach img{max-width:220px}}
+.wgroup{display:grid;gap:6px}
+.wgroup .small{font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+.word{font:inherit;font-weight:700;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.word:hover{border-color:var(--accent)}
+.model{font-size:1.3rem;line-height:1.5;font-weight:700}
+.model mark{background:var(--accent-soft);color:var(--accent);padding:0 4px;border-radius:4px}
+.order{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700}
+.order span{background:var(--accent-soft);border-radius:8px;padding:4px 10px}
 .ab{display:grid;gap:8px}
 .abtools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn.sm{padding:8px 14px;min-height:40px;font-size:.95rem;display:inline-flex;align-items:center;gap:6px}
@@ -408,7 +423,7 @@ function quiz(key,items,renderQ,check,onDone){
 /* ---------- screens ---------- */
 var screens=[
 {t:'Welcome',draw:function(m){m.innerHTML='<div class="card" style="display:grid;gap:14px"><div class="small" style="font-weight:700;color:var(--accent)">English speaking &amp; listening · CLB 4–5</div><h1>First Impressions<br>&amp; The Last Call</h1><p class="lead">Listen, notice, describe, and cast a mystery movie.</p><div><label for="sname">What is your name?</label><input type="text" id="sname" data-k="name" autocomplete="name"></div><p class="small">Use headphones if you can. Your answers save in this browser. Press <b>Next</b> to start.</p></div><div class="card"><h3 style="margin-bottom:10px">Jump to a task</h3><div class="menu" id="menu"></div></div>';
-  var tasks=[['Task 1 · First impressions',1],['Task 2 · Personality words',3],['Task 3 · Describing people',6],['Task 4 · The Last Call',9],['Certificate',14]];
+  var tasks=[['Task 1 · First impressions',1],['Task 2 · Personality words',3],['Task 3 · Describing people',6],['Task 4 · The Last Call',10],['Certificate',15]];
   $('#menu').innerHTML=tasks.map(function(t){return '<button type="button" data-go="'+t[1]+'"><b>'+t[0]+'</b><span aria-hidden="true">→</span></button>'}).join('');
   $$('[data-go]').forEach(function(b){b.onclick=function(){go(+b.getAttribute('data-go'))}});}},
 
@@ -449,6 +464,32 @@ var screens=[
   function d(){$('#me').innerHTML=VOCAB.map(function(v){return v[0]}).concat(['patient','curious','careful','confident']).map(function(w){return '<button type="button" class="chip" aria-pressed="'+(S.meWord===w)+'" data-w="'+w+'">'+w+'</button>'}).join('');
     $$('[data-w]',m).forEach(function(b){b.onclick=function(){S.meWord=b.dataset.w;save();$('#meW').textContent=S.meWord;d()}})}
   d();bindInputs(m);}},
+
+{t:'Task 3 · Describing people',draw:function(m){
+  var C=[
+   {h:'Hair',a:5,tip:'Order: length → type → colour',g:[['Length',['long','short']],['Type',['straight','wavy','curly']],['Colour',['black','brown','blonde','grey']]],ex:'Taylor has long, curly, black hair.',v:'has'},
+   {h:'Face',a:0,tip:'Use <b>has</b> for things on the face.',g:[['On the face',['glasses','a beard','a moustache']]],ex:'Alex has glasses and a short beard.',v:'has'},
+   {h:'Clothes',a:2,tip:'Order: colour → clothing',g:[['Colour',['red','blue','green','yellow','black','grey']],['Clothing',['a jacket','a sweater','a shirt','a T-shirt','a scarf']],['Pattern',['striped']]],ex:'Jordan is wearing a red jacket and a grey T-shirt.',v:'is wearing'},
+   {h:'Put it together',a:6,tip:'',g:[],ex:'Sam has short, wavy hair. Sam is wearing a striped shirt.',v:''}];
+  S.tp=S.tp||0;
+  function mark(t){return esc(t).replace(/\b(has|is wearing)\b/g,'<mark>$1</mark>')}
+  function d(){var c=C[S.tp],a=A[c.a];
+    m.innerHTML='<h2>What do we describe?</h2><p class="lead">When we describe how someone looks, we talk about three things.</p>'+
+    '<div class="steps" role="group" aria-label="Parts">'+C.map(function(x,k){return '<button type="button" data-tp="'+k+'" class="'+(k<S.tp?'done':'')+'"'+(k===S.tp?' aria-current="step"':'')+'>'+(k+1)+' · '+x.h+'</button>'}).join('')+'</div>'+
+    '<div class="card teach"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:16px">'+
+      '<h3 style="font-size:1.6rem">'+c.h+'</h3>'+
+      (c.g.length?c.g.map(function(g){return '<div class="wgroup"><span class="small">'+g[0]+'</span><div class="chips">'+g[1].map(function(w){return '<button type="button" class="word" data-word="'+esc(w)+'">'+w+'</button>'}).join('')+'</div></div>'}).join(''):
+        '<div class="order"><span>1 Hair</span>→<span>2 Face</span>→<span>3 Clothes</span></div><div class="grid2" style="gap:8px"><div class="phr"><b>has</b>hair · glasses · a beard</div><div class="phr"><b>is wearing</b>clothes · a scarf</div></div>')+
+      (c.tip?'<p class="small">'+c.tip+'</p>':'')+
+      '<div class="card" style="background:var(--bg);display:grid;gap:10px"><span class="small"><b>Example</b></span><p class="model">'+mark(c.ex)+'</p><div><button type="button" class="listen" data-say="ex">'+PLAY+'Listen</button><p class="small tts-fallback" hidden></p></div></div>'+
+      (S.tp===C.length-1?'<p class="note">Describe what you can <b>see</b>: hair, face, clothes. Do not talk about body size, age, or beauty.</p>':'')+
+    '</div></div>';
+    SAY=function(){return c.ex};wire(m);
+    $$('[data-word]',m).forEach(function(b){b.onclick=function(){speak(b.dataset.word)}});
+    $$('[data-tp]',m).forEach(function(b){b.onclick=function(){S.tp=+b.dataset.tp;save();d()}});
+  }
+  SUB={more:function(){return S.tp<C.length-1},word:function(){return 'Next: '+C[S.tp+1].h},next:function(){S.tp++;save();d();scrollTo(0,0)},canBack:function(){return S.tp>0},back:function(){S.tp--;save();d();scrollTo(0,0)}};
+  d();}},
 
 {t:'Task 3 · Describing people',draw:function(m){
   m.innerHTML='<h2>has or is wearing?</h2><div class="grid2"><div class="card"><p><b>has</b> → hair, glasses</p><p class="small">She <b>has</b> curly hair. He <b>has</b> glasses.</p></div><div class="card"><p><b>is wearing</b> → clothes</p><p class="small">She <b>is wearing</b> a green sweater.</p></div></div><div class="phr"><b>Useful words</b>long · short · curly · straight · wavy · glasses · a jacket · a sweater · a shirt · a scarf · striped</div><div id="hw"></div>';
