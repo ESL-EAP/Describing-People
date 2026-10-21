@@ -123,6 +123,7 @@ audio{width:100%}
 .small{font-size:.9rem;color:var(--muted)}
 .slowbtn{font:inherit;font-weight:700;font-size:.8rem;padding:4px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
 .slowbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .prgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .pr{display:grid;gap:10px}
 .pr .w{font-family:var(--display);font-size:1.8rem;font-weight:800}
@@ -232,7 +233,7 @@ var FIND=[
  {s:'Please find someone with long, curly hair. They are wearing a black jacket.',a:5},
  {s:'Can you see someone with short hair? They are wearing a red jacket and holding a microphone.',a:2}];
 var BUILD=[1,0,5,6];
-var HASW=[['Mina ___ long, straight hair.','has'],['Jordan ___ a red jacket.','is wearing'],['Alex ___ glasses.','has'],['Sam ___ a striped shirt.','is wearing']];
+var HASW=[['Mina ___ long, straight hair.',['has'],1],['Jordan ___ a red jacket.',['is wearing'],2],['Alex ___ glasses.',['has','is wearing'],0],['Priya ___ brown eyes.',['has'],3],['Taylor ___ happy.',['is'],5],['Sam ___ a striped shirt.',['is wearing'],6]];
 var ROLES=[
  {r:'Investigative Journalist',d:'Asks direct questions, talks to many people, and keeps looking when answers are difficult.'},
  {r:'Researcher',d:'Listens closely, checks information carefully, and notices small details in clues.'},
@@ -343,7 +344,7 @@ function buildWork(certSrc){
   var items=[],sec=function(t){items.push({h:t})},it=function(label,text,key){items.push({l:label,t:text,k:key})};
   sec('Task 1 · First impressions');it('I notice … first',S.poll||'');it('My discussion answer',S.t1notes||'','t1notes');
   sec('Task 2 · Personality words');it('Listening quiz',score('t2q')+' / 6 correct on the first try');it('About me','I am '+(S.meWord||'___')+' because '+(S.meWhy||'___').replace(/^because\s*/i,''),'meWhy');
-  sec('Task 3 · Describing people');it('has / is wearing quiz',score('hw')+' / 4');it('Listen and find the person',score('find')+' / 6');
+  sec('Task 3 · Describing people');it('has / is / is wearing quiz',score('hw3')+' / 6');it('Listen and find the person',score('find')+' / 6');
   BUILD.forEach(function(ai,i){it('My description of '+A[ai].n,S['say_'+i]||'','say_'+i)});
   it('Guess who?',score('guess')+' / 5');if(S.secret!=null)it('My secret person ('+A[S.secret].n+')',S['secret_'+S.secret]||'','secret_'+S.secret);
   sec('Pronunciation');['wearing','moustache','curly','sweater','straight','glasses','striped','beard'].forEach(function(w){if(REC['pr_'+w])it(w,'(my recording)','pr_'+w)});
@@ -414,7 +415,7 @@ var CHECK={
  does:function(t,n){if(nwords(t)<2)return {c:'bad',msg:'Listen to the audio and write one or two actions.'};var k=anyW(t,DOKW[n]);
    return k.length>=2?{c:'good',msg:'Yes! You heard the important actions.'}:(k.length?{c:'mid',msg:'Good start. Listen again — '+n+' describes more actions.'}:{c:'bad',msg:'Hmm, I don’t hear '+n+'’s actions in your answer. Listen again.'})},
  describe:function(t,i){var a=A[+i],n=a.n;if(nwords(t)<4)return {c:'bad',msg:'Say or write two sentences: “'+n+' has ___ hair. '+n+' is wearing ___.”'};var r=seeCheck(t,n),tl=norm(t),tips=[];
-   if(!/ has /.test(tl))tips.push('Use <b>has</b> for hair: “'+n+' has … hair.”');if(!/ wearing /.test(tl))tips.push('Use <b>is wearing</b> for clothes: “'+n+' is wearing …”');
+   if(!/ (has|have) /.test(tl))tips.push('Use <b>has</b> for hair: “'+n+' has … hair.”');if(/ (is|are) (long|short|curly|straight|wavy) hair/.test(tl))tips.push('Use <b>has</b> before hair: “has long hair”, not “is long hair”.');if(!/ wearing /.test(tl))tips.push('Use <b>is wearing</b> for clothes: “'+n+' is wearing …”');
    if(r.wrong.length)return {c:'bad',msg:'Look at the photo again.'+li(r.wrong.concat(tips))};
    if(r.miss.length)tips.push('Also describe: '+r.miss.join(', ')+'.');
    return tips.length?{c:'mid',msg:'Almost!'+li(tips)}:{c:'good',msg:'Excellent description!'}},
@@ -532,10 +533,10 @@ var screens=[
     '<div class="card teach"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:16px">'+
       '<h3 style="font-size:1.6rem">'+c.h+'</h3>'+
       (c.g.length?(HAIRCARD=c.h==='Hair',c.g.map(function(g){return '<div class="wgroup"><span class="small">'+g[0]+'</span><div class="chips">'+g[1].map(function(w){return '<button type="button" class="word" data-slug="'+slugOf(g[0],w)+'">'+w+'</button>'}).join('')+'</div></div>'}).join('')):
-        '<div class="order"><span>1 Hair</span>→<span>2 Face</span>→<span>3 Clothes</span></div><div class="grid2" style="gap:8px"><div class="phr"><b>has</b>hair · glasses · a beard</div><div class="phr"><b>is wearing</b>clothes · a scarf</div></div>')+
+        '<div class="order"><span>1 Hair</span>→<span>2 Face</span>→<span>3 Clothes</span></div><div class="grid3" style="gap:8px"><div class="phr"><b>has</b>hair · eyes · glasses · a beard</div><div class="phr"><b>is</b>tall · tired · happy</div><div class="phr"><b>is wearing</b>clothes · a scarf</div></div>')+
       (c.tip?'<p class="small">'+c.tip+'</p>':'')+
       '<div class="card" style="background:var(--bg);display:grid;gap:10px"><span class="small"><b>Example</b></span><p class="model">'+mark(c.ex)+'</p><div><button type="button" class="listen" data-say="ex">'+PLAY+'Listen</button><p class="small tts-fallback" hidden></p></div></div>'+
-      (S.tp===C.length-1?'<p class="note">Describe what you can <b>see</b>: hair, face, clothes. Do not talk about body size, age, or beauty.</p>':'')+
+      (S.tp===C.length-1?'<p class="note">Describe what you can <b>see</b>. Be kind — don’t judge someone’s body or looks.</p>':'')+
     '</div></div>';
     SAY=function(){return c.ex};wire(m);
     $$('[data-slug]',m).forEach(function(b){b.onclick=function(){wordPop(b.dataset.slug)}});
@@ -568,9 +569,11 @@ var screens=[
   });}},
 
 {t:'Task 3 · Describing people',draw:function(m){
-  m.innerHTML='<h2>has or is wearing?</h2><div class="grid2"><div class="card"><p><b>has</b> → hair, glasses</p><p class="small">She <b>has</b> curly hair. He <b>has</b> glasses.</p></div><div class="card"><p><b>is wearing</b> → clothes</p><p class="small">She <b>is wearing</b> a green sweater.</p></div></div><div class="phr"><b>Useful words</b>long · short · curly · straight · wavy · glasses · a jacket · a sweater · a shirt · a scarf · striped</div><div id="hw"></div>';
-  quiz('hw',HASW,function(q,i){var a=A[[1,2,0,6][i]];return '<div class="card actorview" style="grid-template-columns:minmax(0,160px) minmax(0,1fr)"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:12px;align-content:center"><p class="sentence">'+esc(q[0]).replace('___','<span class="blank">?</span>')+'</p><div class="chips"><button type="button" class="chip" data-ans="has">has</button><button type="button" class="chip" data-ans="is wearing">is wearing</button></div></div></div>'},
-    function(q,a){return a===q[1]?{ok:true,msg:'Correct: '+q[0].replace('___',q[1])}:{ok:false,msg:'Not quite. Hair and glasses → has. Clothes → is wearing.'}})($('#hw'));}},
+  m.innerHTML='<h2>has, is, or is wearing?</h2><div class="grid3"><div class="card"><p><b>has</b> + thing</p><p class="small">hair, eyes, glasses, a beard</p><p class="small">She <b>has</b> curly hair.<br>He <b>has</b> blue eyes.</p></div><div class="card"><p><b>is</b> + adjective</p><p class="small">tall, tired, happy, friendly</p><p class="small">He <b>is</b> tall.<br>She <b>is</b> tired.</p></div><div class="card"><p><b>is wearing</b> + clothes</p><p class="small">a jacket, a sweater, a scarf</p><p class="small">She <b>is wearing</b> a green sweater.</p></div></div><p class="note"><b>Tip:</b> A noun next (<i>hair, eyes, a beard</i>)? Use <b>has</b>. Only an adjective next (<i>tall, tired</i>)? Use <b>is</b>.<br><b>Glasses:</b> both are correct — <i>He has glasses.</i> / <i>He is wearing glasses.</i></p><div class="phr"><b>Useful words</b><b style="display:inline">has:</b> long · short · curly · straight · wavy hair · brown eyes · glasses · a beard<br><b style="display:inline">is:</b> tall · tired · happy<br><b style="display:inline">is wearing:</b> a jacket · a sweater · a shirt · a scarf · striped</div><div id="hw"></div>';
+  quiz('hw3',HASW,function(q,i){var a=A[q[2]];return '<div class="card actorview" style="grid-template-columns:minmax(0,160px) minmax(0,1fr)"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:12px;align-content:center"><p class="sentence">'+esc(q[0]).replace('___','<span class="blank">?</span>')+'</p><div class="chips"><button type="button" class="chip" data-ans="has">has</button><button type="button" class="chip" data-ans="is">is</button><button type="button" class="chip" data-ans="is wearing">is wearing</button></div></div></div>'},
+    function(q,a){if(q[1].indexOf(a)>-1)return {ok:true,msg:'Correct: '+q[0].replace('___',a)+(q[1].length>1?' (“'+q[0].replace('___',q[1].filter(function(x){return x!==a})[0])+'” is also correct.)':'')};
+      var why=a==='is'?'After “is” we need an adjective (tall, happy). Here a noun comes next.':(a==='has'?(q[1][0]==='is'?'“happy” is an adjective, so use “is”.':'Clothes → is wearing.'):(q[1][0]==='is'?'“happy” is an adjective, so use “is”.':'Hair, eyes, a beard → has.'));
+      return {ok:false,msg:'Not quite. '+why}})($('#hw'));}},
 
 {t:'Task 3 · Describing people',draw:function(m){
   m.innerHTML='<h2>Listen and find the person</h2><p class="lead">Press <b>Listen</b>. Tap the person in the description.</p><div id="fd"></div>';
@@ -656,7 +659,7 @@ var screens=[
   '<div class="phr"><b>Pitch frames</b>We choose ___ for the role of ___ because ___. · They have ___ hair and are wearing ___. · In the introduction, they said they ___. · We think they seem ___ because ___. · We did not cast ___ because ___.</div><div class="card">'+AB('pitch','Our pitch — say it or write it','We choose … for the role of … because …','pitch',null,130)+'</div><div class="phr"><b>Discuss</b>I agree because… · I have a different choice because… · Which action shows that? · Another actor could fit because…</div>'+
   '<div class="card" style="display:grid;gap:10px"><h3>Finished?</h3><p>Copy your answers and paste them where your teacher asks. Then press <b>Next</b> to get your certificate.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" id="copy">Copy my answers</button><a class="btn ghost" href="handouts/Student_Activity_Packet.pdf" target="_blank" rel="noopener" style="text-decoration:none">Printable packet (PDF)</a></div><span id="cmsg" class="small" aria-live="polite"></span><textarea id="cout" hidden readonly style="min-height:180px"></textarea></div><p class="small">The actors, portraits, and audio are fictional and were created for this classroom activity.</p>';
   bindInputs(m);wireAB(m);
-  $('#copy').onclick=function(){var L=['DESCRIBING PEOPLE — '+(S.name||'(no name)'),'','Task 1 · I notice '+(S.poll||'—')+' first.',S.t1notes?'Discussion: '+S.t1notes:'','','Task 2 score: '+score('t2q')+' / 6','About me: I am '+(S.meWord||'___')+' because I '+(S.meWhy||'___'),'','Task 3 · has/is wearing: '+score('hw')+' / 4 · Find the person: '+score('find')+' / 6','','Actor notes:'];
+  $('#copy').onclick=function(){var L=['DESCRIBING PEOPLE — '+(S.name||'(no name)'),'','Task 1 · I notice '+(S.poll||'—')+' first.',S.t1notes?'Discussion: '+S.t1notes:'','','Task 2 score: '+score('t2q')+' / 6','About me: I am '+(S.meWord||'___')+' because I '+(S.meWhy||'___'),'','Task 3 · has/is/is wearing: '+score('hw3')+' / 6 · Find the person: '+score('find')+' / 6','','Actor notes:'];
     A.forEach(function(a){var t=(S.at||{})[a.n]||{tr:[]};L.push('- '+a.n+' | see: '+(S['see_'+a.n]||t.see||'')+' | does: '+(S['do_'+a.n]||t.do||'')+' | traits: '+t.tr.join(', '))});
     L.push('','Cast:');ROLES.forEach(function(r,i){L.push('- '+r.r+': '+(S.cast[i]||'—')+(S['why_'+i]?' ('+S['why_'+i]+')':''))});
     L.push('','Pitch: '+(S.pitch||''),'','Guess who: '+score('guess')+' / 5');var txt=L.join('\n'),o=$('#cout'),msg=$('#cmsg');o.value=txt;
@@ -691,7 +694,7 @@ var screens=[
     x.fillStyle='#17324d';x.font='34px "Atkinson Hyperlegible", Arial';x.fillText('has completed the lesson',W/2,660);
     x.font='700 46px "Atkinson Hyperlegible", Arial';x.fillText('Describing People',W/2,725);
     x.fillStyle='#56697a';x.font='28px "Atkinson Hyperlegible", Arial';x.fillText('Personality words  ·  Physical appearance  ·  Movie casting team',W/2,785);
-    x.fillStyle='#087e8b';x.font='700 30px "Atkinson Hyperlegible", Arial';x.fillText('Listening score: '+score('t2q')+'/6  ·  '+score('hw')+'/4  ·  '+score('find')+'/6',W/2,850);
+    x.fillStyle='#087e8b';x.font='700 30px "Atkinson Hyperlegible", Arial';x.fillText('Listening score: '+score('t2q')+'/6  ·  '+score('hw3')+'/6  ·  '+score('find')+'/6',W/2,850);
     x.fillStyle='#17324d';x.font='700 32px "Atkinson Hyperlegible", Arial';x.textAlign='left';x.fillText(S.certDate||today,200,985);
     x.strokeStyle='#17324d';x.lineWidth=2;x.beginPath();x.moveTo(200,1000);x.lineTo(620,1000);x.stroke();
     x.font='24px "Atkinson Hyperlegible", Arial';x.fillStyle='#56697a';x.fillText('Date',200,1035);
