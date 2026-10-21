@@ -191,12 +191,23 @@ var PLAY='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 
 
 /* ---------- speech ---------- */
 var hasTTS='speechSynthesis' in window;
+function bestVoice(){try{var v=speechSynthesis.getVoices().filter(function(x){return /^en/i.test(x.lang)});if(!v.length)return null;
+  function sc(x){var n=x.name,k=0;if(/Natural|Neural|Online/i.test(n))k+=50;if(/Aria|Jenny|Guy|Ava|Andrew|Emma|Brian|Clara|Liam/i.test(n))k+=15;if(/Google/i.test(n))k+=30;if(/Samantha|Daniel|Karen|Moira|Tessa|Serena|Alex|Ava|Zoe|Evan/i.test(n))k+=25;if(/Premium|Enhanced/i.test(n))k+=20;if(/en-(US|CA|GB)/i.test(x.lang))k+=5;if(/David|Zira|Mark|Hazel|eSpeak|espeak/i.test(n))k-=20;if(/Novelty|Bad News|Bells|Boing|Bubbles|Cellos|Wobble|Whisper|Zarvox|Trinoids|Albert|Jester|Organ|Superstar|Bahh|Fred|Junior|Ralph|Kathy|Grandma|Grandpa|Rocko|Shelley|Flo|Eddy|Reed|Sandy/i.test(n))k-=100;return k}
+  return v.slice().sort(function(a,b){return sc(b)-sc(a)})[0]}catch(e){return null}}
+function speakStory(btn){var vm=btn.closest('.vm');function on(){btn.classList.add('playing');if(vm)vm.classList.add('playing')}function off(){btn.classList.remove('playing');if(vm)vm.classList.remove('playing')}
+  if(window._storyAu&&!window._storyAu.paused){window._storyAu.pause();off();return}
+  var used=false,au=new Audio('audio/story.mp3');window._storyAu=au;au.playbackRate=S.slow?.8:1;
+  function tts(){if(used)return;used=true;off();if(!hasTTS){alertBox(btn,STORY);return}
+    try{speechSynthesis.cancel();var parts=STORY_PARTS,vo=bestVoice(),n=0,started=false;on();
+      parts.forEach(function(t,i){var u=new SpeechSynthesisUtterance(t);if(vo){u.voice=vo;u.lang=vo.lang}else u.lang='en-US';u.rate=(S.slow?.7:.92)*(i===2?.9:1);u.pitch=i===2?.92:1;u.onstart=function(){started=true};u.onend=function(){if(++n===parts.length)off()};u.onerror=function(){if(++n===parts.length)off()};speechSynthesis.speak(u)});
+      setTimeout(function(){if(!started&&!speechSynthesis.speaking){off();alertBox(btn,STORY)}},2500)}catch(e){off();alertBox(btn,STORY)}}
+  au.onplaying=function(){used=true;on()};au.onended=off;au.onerror=tts;var pr=au.play();if(pr&&pr.catch)pr.catch(tts)}
 function speak(text,btn){
   if(!hasTTS){alertBox(btn,text);return}
   try{var vs=speechSynthesis.getVoices();if(vs.length&&!vs.some(function(v){return /^en/i.test(v.lang)})){alertBox(btn,text);return}}catch(e){}
   try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='en-CA';u.rate=S.slow?.6:.85;
     var v=speechSynthesis.getVoices().filter(function(x){return /^en/.test(x.lang)});
-    var pref=v.filter(function(x){return /Google|Natural|Samantha|Jenny|Aria/.test(x.name)})[0]||v[0]; if(pref)u.voice=pref;
+    var pref=bestVoice(); if(pref){u.voice=pref;u.lang=pref.lang}
     var started=false;u.onstart=function(){started=true};
     if(btn){btn.classList.add('playing');u.onend=function(){btn.classList.remove('playing')}}
     u.onerror=function(ev){if(btn)btn.classList.remove('playing');if(!started&&ev&&ev.error!=='interrupted'&&ev.error!=='canceled')alertBox(btn,text)};
@@ -444,6 +455,7 @@ function wordPop(slug){var d=WD[slug];if(!d)return;var last=document.activeEleme
   document.addEventListener('keydown',key);
   o.onclick=function(e){if(e.target===o)close()};$('.x',o).onclick=close;$('[data-close]',o).onclick=close;
   $('[data-pw]',o).onclick=function(){speak(d[0]+'. '+d[1],this)};$('.x',o).focus();speak(d[0]);}
+var STORY_PARTS=['It’s eleven forty-seven at night.','A journalist gets a voicemail… from a person who disappeared ten years ago.','The message gives one clue, and it says: “Don’t trust the person who finds me first.”','The journalist has until morning to find out who sent the message.'];
 var STORY='At eleven forty-seven p.m., a journalist receives a voicemail from a person who disappeared ten years ago. The message gives one clue and says: Don’t trust the person who finds me first. The journalist has until morning to find out who sent the message.';
 
 /* ---------- reusable: one-at-a-time quiz ---------- */
@@ -712,7 +724,7 @@ function score(k){var s=S[k];return s?s.res.filter(function(x){return x===true})
 /* ---------- shell ---------- */
 var CANS=[],SUB=null,SAY=null,cur=Math.min(S.cur||0,screens.length-1);
 function bindInputs(root){$$('[data-k]',root).forEach(function(el){if(S[el.dataset.k]!=null)el.value=S[el.dataset.k];el.addEventListener('input',function(){S[el.dataset.k]=el.value;save()})})}
-function wire(root){$$('[data-say]',root).forEach(function(b){b.onclick=function(){var t=SAY&&SAY(b.dataset.say);if(!t)return;var vm=b.closest('.vm');if(vm){vm.classList.add('playing');setTimeout(function(){vm.classList.remove('playing')},14000)}speak(t,b)}})}
+function wire(root){$$('[data-say]',root).forEach(function(b){b.onclick=function(){if(b.dataset.say==='story'){speakStory(b);return}var t=SAY&&SAY(b.dataset.say);if(!t)return;var vm=b.closest('.vm');if(vm){vm.classList.add('playing');setTimeout(function(){vm.classList.remove('playing')},14000)}speak(t,b)}})}
 function go(i){try{speechSynthesis.cancel()}catch(e){}cur=Math.max(0,Math.min(screens.length-1,i));S.cur=cur;save();render();scrollTo(0,0)}
 function render(){SAY=null;SUB=null;var sc=screens[cur],m=$('#app');m.innerHTML='';var d=document.createElement('div');d.className='screen';m.appendChild(d);sc.draw(d);bindInputs(d);wire(d);wireAB(d);
   $('#tLabel').textContent=sc.t;$('#tCount').textContent='Step '+(cur+1)+' of '+screens.length;$('#fill').style.width=((cur+1)/screens.length*100)+'%';
