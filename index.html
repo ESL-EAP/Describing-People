@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Last Call</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: single reading column, sticky task nav, actor cards in a wrapping grid */
+:root{
+  --bg:#f5f8f9; --surface:#ffffff; --ink:#17324d; --muted:#56697a; --line:#cfdde5;
+  --accent:#087e8b; --accent-soft:#e2f2f3; --warm:#fff4dc; --warm-line:#e7aa38; --on-accent:#ffffff;
+  --display:"Bricolage Grotesque",Georgia,serif; --body:"Atkinson Hyperlegible",Arial,Helvetica,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1a22; --surface:#16242f; --ink:#e4eef3; --muted:#9db1bf; --line:#2b3f4d;
+  --accent:#4cc3cc; --accent-soft:#163a40; --warm:#33290f; --warm-line:#d39a2c; --on-accent:#06232a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a22; --surface:#16242f; --ink:#e4eef3; --muted:#9db1bf; --line:#2b3f4d;
+  --accent:#4cc3cc; --accent-soft:#163a40; --warm:#33290f; --warm-line:#d39a2c; --on-accent:#06232a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:17px/1.55 var(--body);margin:0}
+.wrap{max-width:900px;margin:0 auto;padding-block:0 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.2rem,6vw,3.4rem);font-weight:800}
+h2{font-size:1.75rem;font-weight:800;margin-bottom:6px}
+h3{font-size:1.2rem;font-weight:600;margin:22px 0 8px}
+p{margin:0 0 12px;max-width:68ch}
+.eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+header.hero{padding-block:40px 24px}
+header .sub{color:var(--muted);font-size:1.15rem;margin-top:10px}
+.clb{display:inline-block;border:1.5px solid var(--accent);color:var(--accent);border-radius:999px;padding:2px 12px;font-weight:700;font-size:.85rem;margin-bottom:14px}
+nav.tasks{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;padding-block:10px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+nav.tasks a{white-space:nowrap;text-decoration:none;color:var(--ink);font-weight:700;font-size:.92rem;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+nav.tasks a:hover,nav.tasks a:focus-visible{border-color:var(--accent);color:var(--accent)}
+section.task{padding-block:36px 8px;border-bottom:1px solid var(--line);scroll-margin-top:60px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.stack{display:grid;gap:10px}
+.note{background:var(--warm);border-left:4px solid var(--warm-line);padding:10px 14px;border-radius:4px;max-width:68ch}
+.phrases{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.phrases b{display:block;margin-bottom:4px}
+.q{font-weight:700}
+.small{color:var(--muted);font-size:.92rem}
+label{font-weight:700;display:block;margin-bottom:4px}
+input[type=text],textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+textarea{min-height:64px;resize:vertical}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.words{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.words div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.choice-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
+.choice-row:last-child{border-bottom:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:inherit;font-weight:700;font-size:.92rem;padding:6px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (max-width:560px){.choice-row{grid-template-columns:1fr}}
+.match{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.match .box{display:grid;grid-template-columns:auto 90px minmax(0,1fr);gap:8px;align-items:center}
+.num{font-family:var(--display);font-weight:800;font-size:1.3rem;color:var(--accent);width:1.4em}
+.story{background:var(--ink);color:var(--bg);border-radius:12px;padding:22px 22px 12px}
+.story .time{font-family:var(--display);font-size:2.4rem;font-weight:800;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.story blockquote{margin:8px 0 12px;font-size:1.2rem;font-style:italic}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.roles .box strong{font-family:var(--display);font-size:1.1rem;display:block}
+.actors{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.actor{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.actor img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--line)}
+.actor .in{padding:12px 14px 14px;display:grid;gap:8px}
+.actor h3{margin:0;font-size:1.3rem}
+.actor audio{width:100%}
+.actor .tag{font-size:.8rem;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.cast{display:grid;gap:10px}
+.cast .box{display:grid;grid-template-columns:minmax(0,200px) minmax(0,180px) minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:640px){.cast .box{grid-template-columns:1fr}}
+.uncast{font-weight:700}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+.btn{font:inherit;font-weight:700;padding:10px 18px;border-radius:10px;border:0;background:var(--accent);color:var(--on-accent);cursor:pointer;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+#copied{color:var(--accent);font-weight:700}
+footer{padding-top:28px;color:var(--muted);font-size:.9rem}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header class="hero">
+  <span class="clb">English speaking &amp; listening · CLB 4–5</span>
+  <h1>First Impressions<br>&amp; The Last Call</h1>
+  <p class="sub">Listen, notice, describe, and cast the movie.</p>
+  <div class="box" style="margin-top:16px;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+    <div><label for="sname">Your name</label><input type="text" id="sname" autocomplete="name"></div>
+    <div><label for="sdate">Date</label><input type="text" id="sdate"></div>
+  </div>
+  <p class="small" style="margin-top:10px">Your answers save in this browser. When you finish, press <b>Copy my answers</b> at the bottom and paste them where your teacher asks.</p>
+</header>
+
+<nav class="tasks" aria-label="Tasks">
+  <a href="#task1">1 · First impressions</a>
+  <a href="#task2">2 · Personality words</a>
+  <a href="#task3">3 · Describing people</a>
+  <a href="#task4">4 · The Last Call</a>
+  <a href="#actors">Actors</a>
+  <a href="#casting">Cast the movie</a>
+</nav>
+
+<!-- TASK 1 -->
+<section class="task" id="task1">
+  <div class="eyebrow">Task 1</div>
+  <h2>First impressions</h2>
+  <p>Talk with a partner. Choose <b>two</b> questions. You may pass on a personal question.</p>
+  <div class="stack">
+    <div class="box"><div class="q">1. When you meet someone for the first time, what do you notice?</div><div class="small">Their clothes? Their smile? Their voice? Something else?</div></div>
+    <div class="box"><div class="q">2. Can you guess someone’s personality from how they look?</div><div class="small">Why or why not?</div></div>
+    <div class="box"><div class="q">3. Have you ever had the wrong first impression of someone?</div><div class="small">What happened? You can talk about a person in a book, film, or TV show.</div></div>
+    <div class="box"><div class="q">4. Can someone look shy but be friendly?</div><div class="small">Can you think of another example?</div></div>
+    <div class="phrases"><b>Helpful phrases</b>I notice ___ first. · I think ___ because ___. · Sometimes, but ___. · I once thought ___, but then ___. · For example, ___. · I agree. / I’m not sure I agree.</div>
+    <p class="note"><b>Remember:</b> A first impression is a guess. We learn more about a person when we talk to them.</p>
+  </div>
+</section>
+
+<!-- TASK 2 -->
+<section class="task" id="task2">
+  <div class="eyebrow">Task 2</div>
+  <h2>Listen, look, and choose</h2>
+  <p>Review the words. Your teacher will show a picture and play the audio. Choose the best word. You can listen again.</p>
+  <div class="words">
+    <div><b>friendly</b> — kind and welcoming</div>
+    <div><b>helpful</b> — ready to help</div>
+    <div><b>rude</b> — not polite or kind</div>
+    <div><b>impatient</b> — gets annoyed when waiting</div>
+    <div><b>quiet</b> — does not speak much</div>
+    <div><b>talkative</b> — speaks a lot</div>
+  </div>
+  <p class="small" style="margin-top:8px"><b>Quiet</b> and <b>talkative</b> are not automatically good or bad. It depends on the person and the situation.</p>
+  <h3>Choose an answer for each situation</h3>
+  <div class="box" id="t2"></div>
+  <h3>Explain one or two choices</h3>
+  <label for="t2why">I think ___ seems ___ because …</label>
+  <textarea id="t2why"></textarea>
+  <h3>Now describe yourself (or a fictional character)</h3>
+  <label for="t2me">I am ___ because I …</label>
+  <textarea id="t2me" placeholder="Example: I am helpful because I help my family at home."></textarea>
+</section>
+
+<!-- TASK 3 -->
+<section class="task" id="task3">
+  <div class="eyebrow">Task 3</div>
+  <h2>Physical descriptions</h2>
+  <h3>Part A · Listen and find the person</h3>
+  <p>Look at the pictures your teacher shares (A–F). Listen to each description and choose the matching picture. Write one clue you hear.</p>
+  <div class="phrases"><b>Listen for</b>long · short · curly · straight · glasses · clothing</div>
+  <div class="match" id="t3a" style="margin-top:10px"></div>
+  <h3>Part B · Look and describe</h3>
+  <p>Look at each picture your teacher shows. Complete the sentences. Then say one description aloud or record it.</p>
+  <div class="phrases"><b>Word bank</b>long · short · curly · straight · glasses · a blue shirt · a red jacket · a green sweater · a yellow dress · a black hat · a striped shirt</div>
+  <div class="stack" id="t3b" style="margin-top:10px"></div>
+  <p class="small" style="margin-top:10px">Use <b>has / have</b> for hair and glasses. Use <b>is / are wearing</b> for clothes.</p>
+</section>
+
+<!-- TASK 4 -->
+<section class="task" id="task4">
+  <div class="eyebrow">Task 4 · Movie casting team</div>
+  <h2>The Last Call</h2>
+  <div class="story">
+    <div class="time">11:47 p.m.</div>
+    <p>A journalist receives a voicemail from a person who disappeared ten years ago. The message gives one clue and says:</p>
+    <blockquote>“Don’t trust the person who finds me first.”</blockquote>
+    <p>The journalist has until morning to find out who sent the message.</p>
+    <p><b>Your job:</b> You are the casting team. Choose actors for five roles from seven candidates. Two actors will not be cast.</p>
+  </div>
+  <h3>The five roles</h3>
+  <div class="roles">
+    <div class="box"><strong>Investigative Journalist</strong>Asks direct questions, talks to many people, and keeps looking when answers are difficult.</div>
+    <div class="box"><strong>Researcher</strong>Listens closely, checks information carefully, and notices small details in clues.</div>
+    <div class="box"><strong>Podcast Host</strong>Speaks clearly and confidently, explains information, and keeps listeners interested.</div>
+    <div class="box"><strong>Local Contact</strong>Welcomes the journalist, builds trust, knows the area, and offers practical help.</div>
+    <div class="box"><strong>Skeptical Witness</strong>Stays calm, asks for proof, and does not believe a story immediately.</div>
+  </div>
+  <div class="phrases" style="margin-top:12px"><b>Trait word box</b>friendly · helpful · rude · impatient · quiet · talkative · confident · patient · careful · curious — or write your own word.</div>
+  <p class="note" style="margin-top:12px"><b>Use different evidence:</b> appearance helps you identify the actor. The actor’s actions help you infer personality. The role description helps you cast the movie.</p>
+</section>
+
+<section class="task" id="actors">
+  <div class="eyebrow">Candidate gallery</div>
+  <h2>Meet the seven actors</h2>
+  <p>Look at each photo and play the introduction. The actors do not say personality words. Write short notes, not every sentence. You can listen again.</p>
+  <div class="actors" id="actorGrid"></div>
+</section>
+
+<section class="task" id="casting">
+  <div class="eyebrow">Group decision</div>
+  <h2>Cast the movie</h2>
+  <p>Work with your group. Choose one actor for each role. Explain each choice with an action or example from the audio.</p>
+  <div class="cast" id="castGrid"></div>
+  <p class="uncast" style="margin-top:12px">Actors not cast: <span id="uncast">—</span></p>
+  <h3>Prepare your group pitch</h3>
+  <div class="box small" style="color:var(--ink)">We choose ___ for the role of ___ because ___. · They have ___ hair and are wearing ___. · In the introduction, they said they ___. · We think they seem ___ because ___.</div>
+  <label for="pitch" style="margin-top:10px">Our pitch</label>
+  <textarea id="pitch" style="min-height:110px"></textarea>
+  <div class="phrases" style="margin-top:12px"><b>Useful phrases</b>I agree because… · I have a different choice because… · Which action shows that? · Another actor could fit because…</div>
+
+  <div class="bar">
+    <button class="btn" id="copyBtn" type="button">Copy my answers</button>
+    <a class="btn ghost" href="handouts/Student_Activity_Packet.pdf" target="_blank" rel="noopener">Open the printable packet (PDF)</a>
+    <span id="copied" aria-live="polite"></span>
+  </div>
+  <textarea id="copyOut" hidden readonly style="margin-top:10px;min-height:160px"></textarea>
+</section>
+
+<footer>The actors, portraits, and audio introductions are fictional and were created for this classroom activity.</footer>
+</div>
+
+<script>
+(function(){
+  var KEY='lastcall-v1', state={};
+  try{state=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){state={}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+  function bind(el){ if(state[el.id]!=null) el.value=state[el.id];
+    el.addEventListener('input',function(){state[el.id]=el.value;save();if(el.tagName==='SELECT')updateUncast()}); el.addEventListener('change',function(){state[el.id]=el.value;save();updateUncast()}); }
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+  // Task 2
+  var t2=[['Welcoming a new classmate',['friendly','rude','quiet']],['Helping carry books',['helpful','impatient','talkative']],['Interrupting and speaking unkindly',['rude','friendly','helpful']],['Getting upset while waiting',['impatient','quiet','friendly']],['Listening and speaking once or twice',['quiet','talkative','rude']],['Sharing lots of ideas in a group',['talkative','impatient','quiet']]];
+  document.getElementById('t2').innerHTML=t2.map(function(r,i){return '<div class="choice-row"><div><b>'+(i+1)+'.</b> '+r[0]+'</div><div class="chips" role="group" aria-label="Situation '+(i+1)+'">'+r[1].map(function(w){return '<button type="button" class="chip" data-q="t2_'+i+'" data-v="'+w+'" aria-pressed="'+(state['t2_'+i]===w)+'">'+w+'</button>'}).join('')+'</div></div>'}).join('');
+  document.getElementById('t2').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;var q=b.dataset.q;state[q]=b.dataset.v;save();document.querySelectorAll('[data-q="'+q+'"]').forEach(function(x){x.setAttribute('aria-pressed',x===b)})});
+
+  // Task 3A
+  document.getElementById('t3a').innerHTML=[1,2,3,4,5,6].map(function(n){return '<div class="box"><span class="num">'+n+'</span><select id="t3a_'+n+'" aria-label="Audio '+n+' picture letter"><option value="">Picture</option>'+'ABCDEF'.split('').map(function(l){return '<option>'+l+'</option>'}).join('')+'</select><input type="text" id="t3a_c'+n+'" placeholder="One clue I heard" aria-label="Audio '+n+' clue"></div>'}).join('');
+  // Task 3B
+  var t3b=[['She has','hair.','She is wearing'],['He has','hair and','. He is wearing'],['They have','hair.','They are wearing'],['She has','hair and','. She is wearing'],['He has','hair.','He is wearing'],['They have','hair and','. They are wearing']];
+  document.getElementById('t3b').innerHTML=t3b.map(function(r,i){return '<div class="box"><label for="t3b_'+i+'">Picture '+(i+1)+'</label><input type="text" id="t3b_'+i+'" placeholder="'+esc(r[0]+' ___ '+r[1]+' '+r[2].replace(/^\. /,'')+' ___.')+'"></div>'}).join('');
+
+  // Actors
+  var A=[['Alex','actor_01_alex'],['Mina','actor_02_mina'],['Jordan','actor_03_jordan'],['Priya','actor_04_priya'],['Ben','actor_05_ben'],['Taylor','actor_06_taylor'],['Sam','actor_07_sam']];
+  document.getElementById('actorGrid').innerHTML=A.map(function(a,i){var k=a[0].toLowerCase();return '<article class="actor"><img src="images/'+a[1]+'.jpg" alt="Portrait of actor '+(i+1)+', '+a[0]+'" loading="lazy"><div class="in"><span class="tag">Actor '+(i+1)+'</span><h3>'+a[0]+'</h3><audio controls preload="none" src="audio/'+a[1]+'_introduction.mp3"></audio><div><label for="ap_'+k+'">What do you see?</label><input type="text" id="ap_'+k+'" placeholder="hair, glasses, clothes"></div><div><label for="aa_'+k+'">What do they do?</label><input type="text" id="aa_'+k+'" placeholder="actions from the audio"></div><div><label for="at_'+k+'">Personality words</label><input type="text" id="at_'+k+'" placeholder="what you infer"></div></div></article>'}).join('');
+
+  // Casting
+  var R=['Investigative Journalist','Researcher','Podcast Host','Local Contact','Skeptical Witness'];
+  document.getElementById('castGrid').innerHTML=R.map(function(r,i){return '<div class="box"><b>'+r+'</b><select id="cast_'+i+'" aria-label="Actor for '+r+'"><option value="">Choose actor</option>'+A.map(function(a){return '<option>'+a[0]+'</option>'}).join('')+'</select><input type="text" id="why_'+i+'" placeholder="Why? What did they do or say?" aria-label="Why this actor for '+r+'"></div>'}).join('');
+  function updateUncast(){var used=R.map(function(_,i){return document.getElementById('cast_'+i).value}).filter(Boolean);var left=A.map(function(a){return a[0]}).filter(function(n){return used.indexOf(n)<0});var dup=used.filter(function(n,i){return used.indexOf(n)!==i});document.getElementById('uncast').textContent=(used.length?left.join(', '):'—')+(dup.length?'  (You chose '+dup.join(', ')+' for more than one role.)':'')}
+
+  document.querySelectorAll('input[type=text],textarea:not(#copyOut),select').forEach(bind);
+  updateUncast();
+
+  // Copy answers
+  function v(id){var e=document.getElementById(id);return e?e.value.trim():''}
+  document.getElementById('copyBtn').addEventListener('click',function(){
+    var L=['THE LAST CALL — answers','Name: '+v('sname'),'Date: '+v('sdate'),'','TASK 2'];
+    t2.forEach(function(r,i){L.push((i+1)+'. '+r[0]+': '+(state['t2_'+i]||''))});
+    L.push('Why: '+v('t2why'),'About me: '+v('t2me'),'','TASK 3 · Part A');
+    for(var n=1;n<=6;n++)L.push(n+'. '+v('t3a_'+n)+' — '+v('t3a_c'+n));
+    L.push('','TASK 3 · Part B');t3b.forEach(function(_,i){L.push('Picture '+(i+1)+': '+v('t3b_'+i))});
+    L.push('','ACTOR NOTES');A.forEach(function(a){var k=a[0].toLowerCase();L.push(a[0]+' | see: '+v('ap_'+k)+' | do: '+v('aa_'+k)+' | traits: '+v('at_'+k))});
+    L.push('','CASTING');R.forEach(function(r,i){L.push(r+': '+v('cast_'+i)+' — '+v('why_'+i))});
+    L.push('Not cast: '+document.getElementById('uncast').textContent,'','Pitch: '+v('pitch'));
+    var txt=L.join('\n'),out=document.getElementById('copyOut'),msg=document.getElementById('copied');
+    out.value=txt;
+    function fallback(){out.hidden=false;out.focus();out.select();msg.textContent='Select all the text below and copy it.'}
+    try{navigator.clipboard.writeText(txt).then(function(){msg.textContent='Copied. Paste it where your teacher asks.'},fallback)}catch(e){fallback()}
+  });
+})();
+</script>
+</body>
+</html>
