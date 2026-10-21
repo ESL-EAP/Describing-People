@@ -192,13 +192,18 @@ var PLAY='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 
 var hasTTS='speechSynthesis' in window;
 function speak(text,btn){
   if(!hasTTS){alertBox(btn,text);return}
+  try{var vs=speechSynthesis.getVoices();if(vs.length&&!vs.some(function(v){return /^en/i.test(v.lang)})){alertBox(btn,text);return}}catch(e){}
   try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='en-CA';u.rate=S.slow?.6:.85;
     var v=speechSynthesis.getVoices().filter(function(x){return /^en/.test(x.lang)});
     var pref=v.filter(function(x){return /Google|Natural|Samantha|Jenny|Aria/.test(x.name)})[0]||v[0]; if(pref)u.voice=pref;
-    if(btn){btn.classList.add('playing');u.onend=u.onerror=function(){btn.classList.remove('playing')}}
-    speechSynthesis.speak(u)}catch(e){alertBox(btn,text)}
+    var started=false;u.onstart=function(){started=true};
+    if(btn){btn.classList.add('playing');u.onend=function(){btn.classList.remove('playing')}}
+    u.onerror=function(ev){if(btn)btn.classList.remove('playing');if(!started&&ev&&ev.error!=='interrupted'&&ev.error!=='canceled')alertBox(btn,text)};
+    speechSynthesis.speak(u);
+    setTimeout(function(){if(!started&&!speechSynthesis.speaking){if(btn)btn.classList.remove('playing');alertBox(btn,text)}},2500)}catch(e){alertBox(btn,text)}
 }
-function alertBox(btn,text){var n=btn&&btn.nextElementSibling;if(n&&n.classList.contains('tts-fallback')){n.hidden=false;n.textContent='Audio is not available on this device. Ask your teacher to read it.'}}
+function alertBox(btn,text){var n=btn&&btn.nextElementSibling;if(n&&n.classList.contains('tts-fallback')){n.hidden=false;n.innerHTML='<b>No sound on this device.</b> Read it instead:<br><i>'+esc(text)+'</i>'}else if(btn){var x=document.createElement('p');x.className='small tts-fallback';x.innerHTML='<b>No sound on this device.</b> Read it instead: <i>'+esc(text)+'</i>';btn.insertAdjacentElement('afterend',x)}}
+function voiceOK(){try{return hasTTS&&speechSynthesis.getVoices().some(function(v){return /^en/i.test(v.lang)})}catch(e){return false}}
 if(hasTTS){try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=function(){}}catch(e){}}
 function listenBtn(id,label){return '<div><button type="button" class="listen" data-say="'+id+'">'+PLAY+(label||'Listen')+'</button><p class="small tts-fallback" hidden></p></div>'}
 
@@ -366,7 +371,7 @@ function wireAB(root){$$('[data-ab]',root).forEach(function(box){if(box._w)retur
       mr.onstop=function(){stream.getTracks().forEach(function(t){t.stop()});var type=mr.mimeType||'audio/webm',bl=new Blob(chunks,{type:type});if(REC[key])URL.revokeObjectURL(REC[key].url);REC[key]={url:URL.createObjectURL(bl),type:type,blob:bl};idbPut(key,bl,type);showRec(box,key);
         if(sr)try{sr.stop()}catch(e){}btn.classList.remove('rec-on');$('span',btn).textContent='Record again';box._rec=null;st.textContent=SR?'Done. Check the words in the box and fix any mistakes.':'Done. Listen to your recording.'};
       if(SR){try{sr=new SR();sr.lang='en-CA';sr.continuous=true;sr.interimResults=true;
-        sr.onresult=function(e){var fin='',tmp='';for(var i=0;i<e.results.length;i++){if(e.results[i].isFinal)fin+=e.results[i][0].transcript;else tmp+=e.results[i][0].transcript}heard=fin;ta.value=(base?base+' ':'')+(fin+tmp).trim();S[key]=ta.value;save()};
+        sr.onresult=function(e){var parts=[],tmp='';for(var i=0;i<e.results.length;i++){var t=e.results[i][0].transcript.trim();if(!e.results[i].isFinal){tmp=t;continue}var last=parts[parts.length-1];if(last&&t.toLowerCase().indexOf(last.toLowerCase())===0)parts[parts.length-1]=t;else if(!last||last.toLowerCase().indexOf(t.toLowerCase())!==0)parts.push(t)}var fin=parts.join(' ');if(tmp&&fin&&tmp.toLowerCase().indexOf(fin.toLowerCase())===0){fin='';}if(tmp)tmp=' '+tmp;heard=fin;ta.value=(base?base+' ':'')+(fin+tmp).trim();S[key]=ta.value;save()};
         sr.onerror=function(){};sr.start()}catch(e){sr=null}}
       mr.start();box._rec=mr;btn.classList.add('rec-on');$('span',btn).textContent='Stop';st.textContent=SR?'Recording… speak now. Your words will appear in the box.':'Recording… speak now.';
     },function(){st.textContent='The microphone is blocked. Allow the microphone in your browser, or type your answer.'})}})}
