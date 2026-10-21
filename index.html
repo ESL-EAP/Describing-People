@@ -286,6 +286,25 @@ var ICON=[
  '<svg viewBox="0 0 48 48" class="ico" aria-hidden="true"><path d="M8 10h32v22H22l-9 8v-8H8z" fill="#fff" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M19 17a5 5 0 1 1 6 5v3" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="25" cy="29" r="1.8" fill="currentColor"/></svg>'];
 /* ---------- answer boxes: record + check ---------- */
 var REC={},SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function idbOpen(){return new Promise(function(res){try{var q=indexedDB.open('lastcall-rec',1);q.onupgradeneeded=function(){q.result.createObjectStore('rec')};q.onsuccess=function(){res(q.result)};q.onerror=function(){res(null)}}catch(e){res(null)}})}
+function idbPut(k,blob,type){idbOpen().then(function(db){if(!db)return;try{db.transaction('rec','readwrite').objectStore('rec').put({blob:blob,type:type},k)}catch(e){}})}
+idbOpen().then(function(db){if(!db)return;try{var c=db.transaction('rec').objectStore('rec').openCursor();c.onsuccess=function(){var cur=c.result;if(cur){var v=cur.value;if(!REC[cur.key])REC[cur.key]={url:URL.createObjectURL(v.blob),type:v.type,blob:v.blob};cur.continue()}else $$('[data-ab]').forEach(function(b){showRec(b,b.dataset.ab)})}}catch(e){}});
+function blobToData(b){return new Promise(function(res){try{var fr=new FileReader();fr.onload=function(){res(fr.result)};fr.onerror=function(){res(null)};fr.readAsDataURL(b)}catch(e){res(null)}})}
+function buildWork(certSrc){
+  var items=[],sec=function(t){items.push({h:t})},it=function(label,text,key){items.push({l:label,t:text,k:key})};
+  sec('Task 1 · First impressions');it('I notice … first',S.poll||'');it('My discussion answer',S.t1notes||'','t1notes');
+  sec('Task 2 · Personality words');it('Listening quiz',score('t2q')+' / 6 correct on the first try');it('About me','I am '+(S.meWord||'___')+' because '+(S.meWhy||'___').replace(/^because\s*/i,''),'meWhy');
+  sec('Task 3 · Describing people');it('has / is wearing quiz',score('hw')+' / 4');it('Listen and find the person',score('find')+' / 6');
+  BUILD.forEach(function(ai,i){it('My description of '+A[ai].n,S['say_'+i]||'','say_'+i)});
+  sec('Task 4 · The Last Call');it('Role quiz',score('rq')+' / 5');
+  A.forEach(function(a){var t=(S.at||{})[a.n]||{tr:[]};it(a.n+' — what I see',S['see_'+a.n]||t.see||'','see_'+a.n);it(a.n+' — what they do',S['do_'+a.n]||t.do||'','do_'+a.n);if(t.tr.length)it(a.n+' — personality words',t.tr.join(', '))});
+  ROLES.forEach(function(r,i){it('Cast: '+r.r,(S.cast&&S.cast[i]?S.cast[i]:'—')+(S['why_'+i]?' — '+S['why_'+i]:''),'why_'+i)});
+  it('Our pitch',S.pitch||'','pitch');
+  return Promise.all(items.map(function(x){return x.k&&REC[x.k]&&REC[x.k].blob?blobToData(REC[x.k].blob).then(function(d){x.a=d;return x}):Promise.resolve(x)})).then(function(list){
+    var nrec=list.filter(function(x){return x.a}).length;
+    var body=list.map(function(x){if(x.h)return '<h2>'+esc(x.h)+'</h2>';return '<div class="it"><b>'+esc(x.l)+'</b><p>'+(x.t?esc(x.t):'<i>(no written answer)</i>')+'</p>'+(x.a?'<audio controls src="'+x.a+'"></audio>':'')+'</div>'}).join('');
+    var html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc((S.name||'Student')+' — The Last Call')+'</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#17324d;background:#f5f8f9;margin:0;padding:24px 16px;line-height:1.5}main{max-width:820px;margin:0 auto}h1{margin:0 0 4px}h2{color:#087e8b;border-bottom:2px solid #cfdde5;padding-bottom:4px;margin-top:28px}.it{background:#fff;border:1px solid #cfdde5;border-radius:10px;padding:10px 14px;margin:8px 0}.it p{margin:4px 0}audio{width:100%;margin-top:6px}.meta{color:#56697a}img{max-width:100%;border-radius:8px;margin-top:12px;border:1px solid #cfdde5}</style></head><body><main><h1>First Impressions &amp; The Last Call</h1><p class="meta"><b>'+esc(S.name||'(no name)')+'</b> · '+esc(S.certDate||new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}))+' · CLB 4–5 · '+nrec+' recording'+(nrec===1?'':'s')+'</p>'+body+(certSrc?'<h2>Certificate</h2><img src="'+certSrc+'" alt="Certificate of completion">':'')+'</main></body></html>';
+    return {blob:new Blob([html],{type:'text/html'}),nrec:nrec}})}
 var MIC='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>';
 function AB(key,label,ph,chk,ctx,rows){return '<div class="ab" data-ab="'+key+'" data-chk="'+(chk||'')+'" data-ctx="'+(ctx==null?'':ctx)+'"><label for="ab_'+key+'">'+label+'</label><textarea id="ab_'+key+'" data-k="'+key+'" placeholder="'+esc(ph||'')+'"'+(rows?' style="min-height:'+rows+'px"':'')+'></textarea><div class="abtools"><button type="button" class="btn ghost sm" data-rec>'+MIC+'<span>Record</span></button>'+(chk?'<button type="button" class="btn sm" data-check>Check my answer</button>':'')+'<span class="small recst" aria-live="polite"></span></div><div class="recout"></div><div class="abfb" aria-live="polite"></div></div>'}
 function showRec(box,key){var o=$('.recout',box),r=REC[key];if(!r){o.innerHTML='';return}var ext=/mp4/.test(r.type)?'m4a':(/ogg/.test(r.type)?'ogg':'webm');
@@ -297,7 +316,7 @@ function wireAB(root){$$('[data-ab]',root).forEach(function(box){if(box._w)retur
     navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
       var chunks=[],mr=new MediaRecorder(stream),sr=null,base=ta.value.trim(),heard='';
       mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
-      mr.onstop=function(){stream.getTracks().forEach(function(t){t.stop()});var type=mr.mimeType||'audio/webm',bl=new Blob(chunks,{type:type});if(REC[key])URL.revokeObjectURL(REC[key].url);REC[key]={url:URL.createObjectURL(bl),type:type};showRec(box,key);
+      mr.onstop=function(){stream.getTracks().forEach(function(t){t.stop()});var type=mr.mimeType||'audio/webm',bl=new Blob(chunks,{type:type});if(REC[key])URL.revokeObjectURL(REC[key].url);REC[key]={url:URL.createObjectURL(bl),type:type,blob:bl};idbPut(key,bl,type);showRec(box,key);
         if(sr)try{sr.stop()}catch(e){}btn.classList.remove('rec-on');$('span',btn).textContent='Record again';box._rec=null;st.textContent=SR?'Done. Check the words in the box and fix any mistakes.':'Done. Listen to your recording.'};
       if(SR){try{sr=new SR();sr.lang='en-CA';sr.continuous=true;sr.interimResults=true;
         sr.onresult=function(e){var fin='',tmp='';for(var i=0;i<e.results.length;i++){if(e.results[i].isFinal)fin+=e.results[i][0].transcript;else tmp+=e.results[i][0].transcript}heard=fin;ta.value=(base?base+' ':'')+(fin+tmp).trim();S[key]=ta.value;save()};
@@ -505,7 +524,7 @@ var screens=[
 {t:'Certificate',draw:function(m){
   var today=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
   if(!S.certDate)S.certDate=today;
-  m.innerHTML='<h2>Certificate of completion</h2><p class="lead">Check your name and the date. Then download your certificate.</p><div class="grid2"><div><label for="cn">Your name</label><input type="text" id="cn" data-k="name"></div><div><label for="cd">Date</label><input type="text" id="cd" data-k="certDate"></div></div><div class="card" style="padding:10px"><img id="certImg" alt="Certificate of completion" style="width:100%;display:block;border-radius:8px"></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><a class="btn" id="dl" download="Certificate_The_Last_Call.png" style="text-decoration:none">Download certificate</a><span class="small">If the button does not work, right-click (or press and hold) the certificate and choose <b>Save image</b>.</span></div>';
+  m.innerHTML='<h2>Certificate of completion</h2><p class="lead">Check your name and the date. Then download your certificate.</p><div class="grid2"><div><label for="cn">Your name</label><input type="text" id="cn" data-k="name"></div><div><label for="cd">Date</label><input type="text" id="cd" data-k="certDate"></div></div><div class="card" style="padding:10px"><img id="certImg" alt="Certificate of completion" style="width:100%;display:block;border-radius:8px"></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><a class="btn" id="dl" download="Certificate_The_Last_Call.png" style="text-decoration:none">Download certificate</a><span class="small">If the button does not work, right-click (or press and hold) the certificate and choose <b>Save image</b>.</span></div><div class="card" style="display:grid;gap:10px"><h3>Download my work</h3><p>Save one file with all your answers, your scores, your recordings, and your certificate. Open it in any web browser, or send it to your teacher.</p><div><button type="button" class="btn" id="work">Download my work</button></div><span class="small" id="wmsg" aria-live="polite"></span></div>';
   bindInputs(m);
   function drawCert(){var c=document.createElement('canvas'),W=1600,H=1130;c.width=W;c.height=H;var x=c.getContext('2d');
     x.fillStyle='#fbfdfd';x.fillRect(0,0,W,H);
@@ -529,6 +548,9 @@ var screens=[
     x.textAlign='right';x.beginPath();x.moveTo(W-620,1000);x.lineTo(W-200,1000);x.stroke();x.fillText('Teacher',W-200,1035);
     var u=c.toDataURL('image/png');$('#certImg').src=u;$('#dl').href=u;}
   (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(drawCert);
+  $('#work').onclick=function(){var b=this,msg=$('#wmsg');b.disabled=true;msg.textContent='Preparing your file…';
+    buildWork($('#certImg').src).then(function(w){var u=URL.createObjectURL(w.blob),a=document.createElement('a');a.href=u;a.download=((S.name||'student').trim().replace(/[^A-Za-z0-9]+/g,'_')||'student')+'_The_Last_Call_work.html';document.body.appendChild(a);a.click();a.remove();
+      msg.textContent='Downloaded: your answers and '+w.nrec+' recording'+(w.nrec===1?'':'s')+'. Look in your Downloads folder.';b.disabled=false;setTimeout(function(){URL.revokeObjectURL(u)},60000)},function(){msg.textContent='Something went wrong. Please try again.';b.disabled=false})};
   $$('#cn,#cd',m).forEach(function(i){i.addEventListener('input',drawCert)});}}
 ];
 function score(k){var s=S[k];return s?s.res.filter(function(x){return x===true}).length:0}
