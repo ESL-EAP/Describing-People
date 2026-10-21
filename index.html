@@ -133,6 +133,14 @@ audio{width:100%}
 .word:hover{border-color:var(--accent)}
 .model{font-size:1.3rem;line-height:1.5;font-weight:700}
 .model mark{background:var(--accent-soft);color:var(--accent);padding:0 4px;border-radius:4px}
+.wpop{position:fixed;inset:0;z-index:20;background:rgba(10,20,28,.6);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.wpop .box{background:var(--surface);color:var(--ink);border-radius:18px;width:min(420px,100%);max-height:100%;overflow:auto;padding:16px;display:grid;gap:12px;position:relative;animation:in .2s ease}
+.wpop img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;display:block}
+.wpop .ph0{aspect-ratio:3/1;font-size:1rem!important;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--display);font-size:3rem;font-weight:800;text-align:center;padding:12px}
+.wpop .sw{aspect-ratio:2/1;border-radius:12px;border:1px solid var(--line)}
+.wpop h3{font-size:2rem;text-align:center}
+.wpop .x{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);font-size:1.4rem;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.word{display:inline-flex;align-items:center;gap:6px}.word i{font-style:normal;font-size:.75rem;color:var(--muted)}
 .order{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700}
 .order span{background:var(--accent-soft);border-radius:8px;padding:4px 10px}
 .ab{display:grid;gap:8px}
@@ -390,6 +398,24 @@ var CHECK={
  pitch:function(t){if(nwords(t)<8)return {c:'bad',msg:'Write or record your full pitch. Use the frames above.'};var tl=norm(t),C=[['We choose … for the role of …',/ (choose|chose) .* role/],['because',/ because /],['has/have … hair',/ (has|have) .*hair/],['is/are wearing',/ wearing /],['In the introduction, they said…',/ (said|say|says) /],['seem(s) + personality word',/ seems? /]];
    var ok=C.filter(function(c){return c[1].test(tl)}),no=C.filter(function(c){return !c[1].test(tl)});
    return {c:no.length===0?'good':(ok.length>=3?'mid':'bad'),msg:(no.length===0?'Excellent pitch! You used every frame.':'You used '+ok.length+' of '+C.length+' frames.')+(no.length?' Add:'+li(no.map(function(c){return c[0]})):'')}}};
+var WD={
+ 'hair-long':['long','She has long hair.'],'hair-short':['short','He has short hair.'],'hair-straight':['straight','She has straight hair.'],'hair-wavy':['wavy','They have wavy hair.'],'hair-curly':['curly','He has curly hair.'],
+ 'hair-black':['black','She has black hair.'],'hair-brown':['brown','He has brown hair.'],'hair-blonde':['blonde','She has blonde hair.'],'hair-grey':['grey','He has grey hair.'],
+ 'glasses':['glasses','She has glasses.'],'beard':['a beard','He has a beard.'],'moustache':['a moustache','He has a moustache.'],
+ 'color-red':['red','He is wearing a red jacket.','#c8372d'],'color-blue':['blue','She is wearing a blue sweater.','#2f5fb3'],'color-green':['green','He is wearing a green jacket.','#3d7a45'],'color-yellow':['yellow','She is wearing a yellow scarf.','#f2c230'],'color-black':['black','They are wearing a black jacket.','#1b1b1b'],'color-grey':['grey','He is wearing a grey shirt.','#8a8f94'],
+ 'jacket':['a jacket','He is wearing a jacket.'],'sweater':['a sweater','She is wearing a sweater.'],'shirt':['a shirt','He is wearing a shirt.'],'tshirt':['a T-shirt','She is wearing a T-shirt.'],'scarf':['a scarf','She is wearing a scarf.'],'striped':['striped','They are wearing a striped shirt.']};
+function slugOf(group,w){if(/Length|Type/.test(group)||group==='Colour'&&!/red|blue|green|yellow/.test(w)&&HAIRCARD)return 'hair-'+w;if(group==='Colour')return 'color-'+w;if(group==='Pattern')return 'striped';return w.replace(/^a /,'').replace('T-shirt','tshirt')}
+var HAIRCARD=false;
+function wordPop(slug){var d=WD[slug];if(!d)return;var last=document.activeElement;
+  var o=document.createElement('div');o.className='wpop';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');o.setAttribute('aria-label',d[0]);
+  var pic=d[2]?'<div class="sw" style="background:'+d[2]+'"></div>':'<img src="images/words/'+slug+'.jpg" alt="'+esc(d[0])+'" onerror="this.outerHTML=\'<div class=&quot;ph0&quot;>Picture coming soon</div>\'">';
+  o.innerHTML='<div class="box"><button type="button" class="x" aria-label="Close">×</button>'+pic+'<h3>'+esc(d[0])+'</h3><p class="model" style="text-align:center;font-size:1.15rem">'+esc(d[1]).replace(/\b(has|have|is wearing|are wearing)\b/g,'<mark>$1</mark>')+'</p><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button type="button" class="listen" data-pw>'+PLAY+'Listen</button><button type="button" class="btn ghost" data-close>Close</button></div></div>';
+  document.body.appendChild(o);
+  function close(){o.remove();document.removeEventListener('keydown',key);try{last&&last.focus()}catch(e){}}
+  function key(e){if(e.key==='Escape')close()}
+  document.addEventListener('keydown',key);
+  o.onclick=function(e){if(e.target===o)close()};$('.x',o).onclick=close;$('[data-close]',o).onclick=close;
+  $('[data-pw]',o).onclick=function(){speak(d[0]+'. '+d[1],this)};$('.x',o).focus();speak(d[0]);}
 var STORY='At eleven forty-seven p.m., a journalist receives a voicemail from a person who disappeared ten years ago. The message gives one clue and says: Don’t trust the person who finds me first. The journalist has until morning to find out who sent the message.';
 
 /* ---------- reusable: one-at-a-time quiz ---------- */
@@ -474,18 +500,18 @@ var screens=[
   S.tp=S.tp||0;
   function mark(t){return esc(t).replace(/\b(has|is wearing)\b/g,'<mark>$1</mark>')}
   function d(){var c=C[S.tp],a=A[c.a];
-    m.innerHTML='<h2>What do we describe?</h2><p class="lead">When we describe how someone looks, we talk about three things.</p>'+
+    m.innerHTML='<h2>What do we describe?</h2><p class="lead">When we describe how someone looks, we talk about three things. <b>Tap a word</b> to see a picture.</p>'+
     '<div class="steps" role="group" aria-label="Parts">'+C.map(function(x,k){return '<button type="button" data-tp="'+k+'" class="'+(k<S.tp?'done':'')+'"'+(k===S.tp?' aria-current="step"':'')+'>'+(k+1)+' · '+x.h+'</button>'}).join('')+'</div>'+
     '<div class="card teach"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:16px">'+
       '<h3 style="font-size:1.6rem">'+c.h+'</h3>'+
-      (c.g.length?c.g.map(function(g){return '<div class="wgroup"><span class="small">'+g[0]+'</span><div class="chips">'+g[1].map(function(w){return '<button type="button" class="word" data-word="'+esc(w)+'">'+w+'</button>'}).join('')+'</div></div>'}).join(''):
+      (c.g.length?(HAIRCARD=c.h==='Hair',c.g.map(function(g){return '<div class="wgroup"><span class="small">'+g[0]+'</span><div class="chips">'+g[1].map(function(w){return '<button type="button" class="word" data-slug="'+slugOf(g[0],w)+'">'+w+'</button>'}).join('')+'</div></div>'}).join('')):
         '<div class="order"><span>1 Hair</span>→<span>2 Face</span>→<span>3 Clothes</span></div><div class="grid2" style="gap:8px"><div class="phr"><b>has</b>hair · glasses · a beard</div><div class="phr"><b>is wearing</b>clothes · a scarf</div></div>')+
       (c.tip?'<p class="small">'+c.tip+'</p>':'')+
       '<div class="card" style="background:var(--bg);display:grid;gap:10px"><span class="small"><b>Example</b></span><p class="model">'+mark(c.ex)+'</p><div><button type="button" class="listen" data-say="ex">'+PLAY+'Listen</button><p class="small tts-fallback" hidden></p></div></div>'+
       (S.tp===C.length-1?'<p class="note">Describe what you can <b>see</b>: hair, face, clothes. Do not talk about body size, age, or beauty.</p>':'')+
     '</div></div>';
     SAY=function(){return c.ex};wire(m);
-    $$('[data-word]',m).forEach(function(b){b.onclick=function(){speak(b.dataset.word)}});
+    $$('[data-slug]',m).forEach(function(b){b.onclick=function(){wordPop(b.dataset.slug)}});
     $$('[data-tp]',m).forEach(function(b){b.onclick=function(){S.tp=+b.dataset.tp;save();d()}});
   }
   SUB={more:function(){return S.tp<C.length-1},word:function(){return 'Next: '+C[S.tp+1].h},next:function(){S.tp++;save();d();scrollTo(0,0)},canBack:function(){return S.tp>0},back:function(){S.tp--;save();d();scrollTo(0,0)}};
