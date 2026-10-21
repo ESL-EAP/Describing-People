@@ -119,6 +119,19 @@ audio{width:100%}
 .menu{display:grid;gap:8px}
 .menu button{text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:10px}
 .small{font-size:.9rem;color:var(--muted)}
+.ab{display:grid;gap:8px}
+.abtools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn.sm{padding:8px 14px;min-height:40px;font-size:.95rem;display:inline-flex;align-items:center;gap:6px}
+.btn.sm svg{width:18px;height:18px;fill:currentColor}
+.btn.rec-on{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.rec-on svg{animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.recout{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.recout audio{flex:1 1 220px;min-width:0}
+.fb.mid{background:var(--warm);color:var(--ink);border-left:4px solid var(--warm-line)}
+.fb ul{margin:6px 0 0;padding-left:20px;font-weight:400}
+.fit{display:inline-block;font-weight:700;font-size:.85rem;border-radius:999px;padding:3px 10px}
+.fit.good{background:var(--good-soft);color:var(--good)}.fit.mid{background:var(--warm);color:var(--ink)}.fit.bad{background:var(--bad-soft);color:var(--bad)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -271,6 +284,76 @@ var ICON=[
  '<svg viewBox="0 0 48 48" class="ico" aria-hidden="true"><rect x="17" y="5" width="14" height="24" rx="7" fill="#e7aa38" stroke="currentColor" stroke-width="3"/><path d="M11 22a13 13 0 0 0 26 0M24 35v7M16 42h16" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
  '<svg viewBox="0 0 48 48" class="ico" aria-hidden="true"><path d="M24 44s-13-13-13-23a13 13 0 0 1 26 0c0 10-13 23-13 23z" fill="#fff" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="21" r="5" fill="#e7aa38" stroke="currentColor" stroke-width="2.5"/></svg>',
  '<svg viewBox="0 0 48 48" class="ico" aria-hidden="true"><path d="M8 10h32v22H22l-9 8v-8H8z" fill="#fff" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M19 17a5 5 0 1 1 6 5v3" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="25" cy="29" r="1.8" fill="currentColor"/></svg>'];
+/* ---------- answer boxes: record + check ---------- */
+var REC={},SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+var MIC='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>';
+function AB(key,label,ph,chk,ctx,rows){return '<div class="ab" data-ab="'+key+'" data-chk="'+(chk||'')+'" data-ctx="'+(ctx==null?'':ctx)+'"><label for="ab_'+key+'">'+label+'</label><textarea id="ab_'+key+'" data-k="'+key+'" placeholder="'+esc(ph||'')+'"'+(rows?' style="min-height:'+rows+'px"':'')+'></textarea><div class="abtools"><button type="button" class="btn ghost sm" data-rec>'+MIC+'<span>Record</span></button>'+(chk?'<button type="button" class="btn sm" data-check>Check my answer</button>':'')+'<span class="small recst" aria-live="polite"></span></div><div class="recout"></div><div class="abfb" aria-live="polite"></div></div>'}
+function showRec(box,key){var o=$('.recout',box),r=REC[key];if(!r){o.innerHTML='';return}var ext=/mp4/.test(r.type)?'m4a':(/ogg/.test(r.type)?'ogg':'webm');
+  o.innerHTML='<audio controls src="'+r.url+'"></audio><a class="btn ghost sm" style="text-decoration:none" href="'+r.url+'" download="'+esc(((S.name||'student').replace(/[^A-Za-z0-9]+/g,'_'))+'_'+key)+'.'+ext+'">Save recording</a>'}
+function wireAB(root){$$('[data-ab]',root).forEach(function(box){if(box._w)return;box._w=1;var key=box.dataset.ab,ta=$('textarea',box),btn=$('[data-rec]',box),st=$('.recst',box);showRec(box,key);
+  var ck=$('[data-check]',box);if(ck)ck.onclick=function(){var f=CHECK[box.dataset.chk](ta.value,box.dataset.ctx);$('.abfb',box).innerHTML='<div class="fb '+f.c+'">'+f.msg+'</div>'};
+  btn.onclick=function(){if(box._rec){box._rec.stop();return}
+    if(!navigator.mediaDevices||!window.MediaRecorder){st.textContent='Recording is not available in this browser. Please type your answer.';return}
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+      var chunks=[],mr=new MediaRecorder(stream),sr=null,base=ta.value.trim(),heard='';
+      mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+      mr.onstop=function(){stream.getTracks().forEach(function(t){t.stop()});var type=mr.mimeType||'audio/webm',bl=new Blob(chunks,{type:type});if(REC[key])URL.revokeObjectURL(REC[key].url);REC[key]={url:URL.createObjectURL(bl),type:type};showRec(box,key);
+        if(sr)try{sr.stop()}catch(e){}btn.classList.remove('rec-on');$('span',btn).textContent='Record again';box._rec=null;st.textContent=SR?'Done. Check the words in the box and fix any mistakes.':'Done. Listen to your recording.'};
+      if(SR){try{sr=new SR();sr.lang='en-CA';sr.continuous=true;sr.interimResults=true;
+        sr.onresult=function(e){var fin='',tmp='';for(var i=0;i<e.results.length;i++){if(e.results[i].isFinal)fin+=e.results[i][0].transcript;else tmp+=e.results[i][0].transcript}heard=fin;ta.value=(base?base+' ':'')+(fin+tmp).trim();S[key]=ta.value;save()};
+        sr.onerror=function(){};sr.start()}catch(e){sr=null}}
+      mr.start();box._rec=mr;btn.classList.add('rec-on');$('span',btn).textContent='Stop';st.textContent=SR?'Recording… speak now. Your words will appear in the box.':'Recording… speak now.';
+    },function(){st.textContent='The microphone is blocked. Allow the microphone in your browser, or type your answer.'})}})}
+function norm(t){return ' '+String(t||'').toLowerCase().replace(/[’']/g,'').replace(/[^a-z ]+/g,' ').replace(/\s+/g,' ')+' '}
+function hasW(t,w){return norm(t).indexOf(' '+w)>-1}
+function anyW(t,ws){return ws.filter(function(w){return hasW(t,w)})}
+function nwords(t){return norm(t).trim().split(' ').filter(Boolean).length}
+var FEAT={
+ Alex:[['hair length',['short'],['long']],['hair type',['curl'],['straight']],['glasses',['glass'],[]],['clothes',['jacket','green','coat'],[]]],
+ Mina:[['hair length',['long'],['short']],['hair type',['straight'],['curl','wav']],['clothes',['sweater','blue','jumper'],[]]],
+ Jordan:[['hair length',['short'],['long']],['clothes',['jacket','red'],[]],['something special',['microphone','mic '],[]]],
+ Priya:[['hair type',['curl','wav'],['straight']],['clothes',['scarf','yellow','coat'],[]]],
+ Ben:[['hair length',['short'],['long']],['clothes',['grey','gray','shirt','sweater','top'],[]]],
+ Taylor:[['hair length',['long'],['short']],['hair type',['curl','wav'],['straight']],['clothes',['jacket','black'],[]]],
+ Sam:[['hair length',['short'],['long']],['hair type',['wav','curl'],['straight']],['clothes',['strip','shirt'],[]]]};
+var GLASSES={Alex:1};
+var DOKW={
+ Alex:['ask','question','direct','answer','keep','give up','another way','find'],
+ Mina:['read','puzzle','write','detail','check','listen','understand','careful'],
+ Jordan:['audio','stor','speak','clear','explain','question','audience','shar','club','podcast'],
+ Priya:['know','people','neighbo','introduc','show','help','visit','where to go'],
+ Ben:['ask','true','check','fact','side','decide','surpris','story','proof'],
+ Taylor:['talk','people','stor','conversation','stranger','start','long time','around'],
+ Sam:['listen','calm','decision','rush','think','next','worried','moment','group']};
+var FIT=[{best:['Alex'],ok:['Taylor','Jordan','Ben']},{best:['Mina'],ok:['Ben','Sam']},{best:['Jordan'],ok:['Taylor','Alex']},{best:['Priya'],ok:['Taylor']},{best:['Ben'],ok:['Sam']}];
+function fitOf(i,n){var f=FIT[i];return f.best.indexOf(n)>-1?['good','Strong fit']:(f.ok.indexOf(n)>-1?['mid','Possible fit — explain with evidence']:['bad','Check the role description again'])}
+function li(a){return '<ul>'+a.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'}
+function seeCheck(t,n){var got=[],miss=[],wrong=[];FEAT[n].forEach(function(f){if(anyW(t,f[1]).length)got.push(f[0]);else miss.push(f[0]);var b=anyW(t,f[2]);if(b.length)wrong.push('Look again at the '+f[0]+'. '+n+' does not have '+b[0].trim()+' hair.')});
+  if(!GLASSES[n]&&hasW(t,'glass'))wrong.push(n+' is not wearing glasses.');return {got:got,miss:miss,wrong:wrong}}
+var CHECK={
+ phrases:function(t){if(nwords(t)<4)return {c:'bad',msg:'Write or record a little more. Try: “I think ___ because ___.”'};var P=[['I notice',/i notice/],['I think … because',/i think.*because/],['For example',/for example/],['I agree / I’m not sure',/i agree|not sure/],['I once thought … but',/i once thought.*but/],['Sometimes, but',/sometimes.*but/]];var tl=norm(t),used=P.filter(function(p){return p[1].test(tl)}).map(function(p){return p[0]});
+   return used.length>=2?{c:'good',msg:'Great! You used these phrases:'+li(used)}:{c:'mid',msg:(used.length?'Good start. You used: '+used.join(', ')+'.':'Good ideas!')+' Try to use one more helpful phrase, for example “I think ___ because ___.”'}},
+ me:function(t){if(!S.meWord)return {c:'bad',msg:'First, tap a word that describes you.'};if(nwords(t)<3)return {c:'bad',msg:'Add an example. What do you do? Example: “…because I help my family at home.”'};var tl=norm(t),tips=[];
+   if(!/ i | because /.test(tl)&&!/^ (help|listen|talk|speak|like|always|often|ask|wait|smile)/.test(tl))tips.push('Start with “I …” to say what you do, for example “I help…”.');
+   if(/ (is|am|are) (friendly|helpful|rude|impatient|quiet|talkative|patient|curious|careful|confident) /.test(tl))tips.push('Give an action, not another adjective. What do you do?');
+   return tips.length?{c:'mid',msg:'Almost!'+li(tips)}:{c:'good',msg:'Good sentence: “I am '+esc(S.meWord)+' because '+esc(t.trim().replace(/^because\s*/i,''))+'”'}},
+ see:function(t,n){if(nwords(t)<2)return {c:'bad',msg:'Write what you see: hair, glasses, clothes.'};var r=seeCheck(t,n);
+   if(r.wrong.length)return {c:'bad',msg:'Look at the photo again.'+li(r.wrong)};
+   return r.got.length>=FEAT[n].length-0||r.got.length>=2?{c:'good',msg:'Good observation! You described: '+r.got.join(', ')+'.'+(r.miss.length?' You can also add: '+r.miss.join(', ')+'.':'')}:{c:'mid',msg:(r.got.length?'Good: '+r.got.join(', ')+'. ':'')+'Also describe: '+r.miss.join(', ')+'.'}},
+ does:function(t,n){if(nwords(t)<2)return {c:'bad',msg:'Listen to the audio and write one or two actions.'};var k=anyW(t,DOKW[n]);
+   return k.length>=2?{c:'good',msg:'Yes! You heard the important actions.'}:(k.length?{c:'mid',msg:'Good start. Listen again — '+n+' describes more actions.'}:{c:'bad',msg:'Hmm, I don’t hear '+n+'’s actions in your answer. Listen again.'})},
+ describe:function(t,i){var a=A[+i],n=a.n;if(nwords(t)<4)return {c:'bad',msg:'Say or write two sentences: “'+n+' has ___ hair. '+n+' is wearing ___.”'};var r=seeCheck(t,n),tl=norm(t),tips=[];
+   if(!/ has /.test(tl))tips.push('Use <b>has</b> for hair: “'+n+' has … hair.”');if(!/ wearing /.test(tl))tips.push('Use <b>is wearing</b> for clothes: “'+n+' is wearing …”');
+   if(r.wrong.length)return {c:'bad',msg:'Look at the photo again.'+li(r.wrong.concat(tips))};
+   if(r.miss.length)tips.push('Also describe: '+r.miss.join(', ')+'.');
+   return tips.length?{c:'mid',msg:'Almost!'+li(tips)}:{c:'good',msg:'Excellent description!'}},
+ why:function(t,i){var n=S.cast[+i];if(!n)return {c:'bad',msg:'Choose an actor first.'};if(nwords(t)<3)return {c:'bad',msg:'Give a reason: what did '+n+' say they do?'};var k=anyW(t,DOKW[n]),f=fitOf(+i,n),tl=norm(t);
+   var m=k.length?'Good evidence from the audio.':'Use evidence: what did '+n+' say they do in the introduction?';
+   if(!/ because /.test(tl))m+=' Try using “because”.';
+   return {c:k.length&&f[0]!=='bad'?'good':(k.length||f[0]!=='bad'?'mid':'bad'),msg:m+' <span class="fit '+f[0]+'">'+f[1]+'</span>'}},
+ pitch:function(t){if(nwords(t)<8)return {c:'bad',msg:'Write or record your full pitch. Use the frames above.'};var tl=norm(t),C=[['We choose … for the role of …',/ (choose|chose) .* role/],['because',/ because /],['has/have … hair',/ (has|have) .*hair/],['is/are wearing',/ wearing /],['In the introduction, they said…',/ (said|say|says) /],['seem(s) + personality word',/ seems? /]];
+   var ok=C.filter(function(c){return c[1].test(tl)}),no=C.filter(function(c){return !c[1].test(tl)});
+   return {c:no.length===0?'good':(ok.length>=3?'mid':'bad'),msg:(no.length===0?'Excellent pitch! You used every frame.':'You used '+ok.length+' of '+C.length+' frames.')+(no.length?' Add:'+li(no.map(function(c){return c[0]})):'')}}};
 var STORY='At eleven forty-seven p.m., a journalist receives a voicemail from a person who disappeared ten years ago. The message gives one clue and says: Don’t trust the person who finds me first. The journalist has until morning to find out who sent the message.';
 
 /* ---------- reusable: one-at-a-time quiz ---------- */
@@ -318,8 +401,8 @@ var screens=[
   var Q=[['When you meet someone for the first time, what do you notice?','Their clothes? Their smile? Their voice?'],['Can you guess someone’s personality from how they look?','Why or why not?'],['Have you ever had the wrong first impression of someone?','What happened? You can talk about a person in a book, film, or TV show.'],['Can someone look shy but be friendly?','Can you think of another example?']];
   S.q2=S.q2||[];
   function draw(){m.innerHTML='<h2>Talk with a partner</h2><p class="lead">Tap <b>two</b> questions to discuss. You may pass on a personal question. ('+S.q2.length+' / 2 chosen)</p><div class="grid2">'+Q.map(function(q,i){return '<button type="button" class="qcard" data-q="'+i+'" aria-pressed="'+(S.q2.indexOf(i)>-1)+'"><b>'+(i+1)+'. '+q[0]+'</b><span class="small">'+q[1]+'</span></button>'}).join('')+'</div>'+
-    (S.q2.length===2?'<div class="phr"><b>Helpful phrases</b>I notice ___ first. · I think ___ because ___. · Sometimes, but ___. · I once thought ___, but then ___. · For example, ___. · I agree. / I’m not sure I agree.</div><div><label for="t1n">My notes (optional)</label><textarea id="t1n" data-k="t1notes"></textarea></div>':'');
-    $$('[data-q]',m).forEach(function(b){b.onclick=function(){var i=+b.dataset.q,k=S.q2.indexOf(i);if(k>-1)S.q2.splice(k,1);else{if(S.q2.length===2)S.q2.shift();S.q2.push(i)}save();draw()}});bindInputs(m)}
+    (S.q2.length===2?'<div class="phr"><b>Helpful phrases</b>I notice ___ first. · I think ___ because ___. · Sometimes, but ___. · I once thought ___, but then ___. · For example, ___. · I agree. / I’m not sure I agree.</div><div class="card">'+AB('t1notes','Say or write your answer','I think … because …','phrases')+'</div>':'');
+    $$('[data-q]',m).forEach(function(b){b.onclick=function(){var i=+b.dataset.q,k=S.q2.indexOf(i);if(k>-1)S.q2.splice(k,1);else{if(S.q2.length===2)S.q2.shift();S.q2.push(i)}save();draw()}});bindInputs(m);wireAB(m)}
   draw();}},
 
 {t:'Task 2 · Personality words',draw:function(m){
@@ -338,7 +421,7 @@ var screens=[
   SAY=function(id){var i=+id.replace('sit','');return SIT[i].s};}},
 
 {t:'Task 2 · Personality words',draw:function(m){
-  m.innerHTML='<h2>Now describe yourself</h2><p class="lead">Choose a word that describes you (or a fictional character). Then finish the sentence.</p><div class="chips" id="me"></div><div class="card sentence">I am <span class="blank" id="meW">'+esc(S.meWord||'_____')+'</span> because I …</div><div><label for="meWhy">because I …</label><textarea id="meWhy" data-k="meWhy" placeholder="Example: I am helpful because I help my family at home."></textarea></div><p class="small">You can also say your sentence aloud to a partner or record it in your class tool.</p>';
+  m.innerHTML='<h2>Now describe yourself</h2><p class="lead">Choose a word that describes you (or a fictional character). Then finish the sentence.</p><div class="chips" id="me"></div><div class="card sentence">I am <span class="blank" id="meW">'+esc(S.meWord||'_____')+'</span> because I …</div><div class="card">'+AB('meWhy','Finish the sentence: because I …','Example: I help my family at home.','me')+'</div>';
   function d(){$('#me').innerHTML=VOCAB.map(function(v){return v[0]}).concat(['patient','curious','careful','confident']).map(function(w){return '<button type="button" class="chip" aria-pressed="'+(S.meWord===w)+'" data-w="'+w+'">'+w+'</button>'}).join('');
     $$('[data-w]',m).forEach(function(b){b.onclick=function(){S.meWord=b.dataset.w;save();$('#meW').textContent=S.meWord;d()}})}
   d();bindInputs(m);}},
@@ -360,13 +443,14 @@ var screens=[
     var opts={len:['long','short'],tex:['curly','straight','wavy'],gl:['and glasses','(no glasses)'],wear:['a green jacket','a blue sweater','a black jacket','a striped shirt','a red jacket','a yellow scarf']};
     function row(k,label){return '<div style="display:grid;gap:6px"><p class="small"><b>'+label+'</b></p><div class="chips">'+opts[k].map(function(o){return '<button type="button" class="chip" data-b="'+k+'" data-v="'+o+'" aria-pressed="'+(ans[k]===o)+'">'+o+'</button>'}).join('')+'</div></div>'}
     m.innerHTML='<h2>Look and describe</h2><p class="lead">Build a description of each person. Then say it aloud.</p><div class="dots">'+BUILD.map(function(_,k){return '<span class="dot '+(S.bd[k]&&S.bd[k].ok?'ok':(k===idx?'on':''))+'">'+(k+1)+'</span>'}).join('')+'</div>'+
-    '<div class="card actorview"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:14px"><p class="sentence">'+a.n+' has <span class="blank">'+esc(ans.len||'___')+'</span>, <span class="blank">'+esc(ans.tex||'___')+'</span> hair <span class="blank">'+esc(ans.gl==='and glasses'?'and glasses':(ans.gl?'—':'___'))+'</span>.<br>'+a.n+' is wearing <span class="blank">'+esc(ans.wear||'___')+'</span>.</p>'+row('len','Hair length')+row('tex','Hair type')+row('gl','Glasses?')+row('wear','Clothes')+'<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn" id="chk">Check</button><button type="button" class="btn ghost" id="hear">Hear my sentence</button></div><div id="bfb"></div></div></div>';
+    '<div class="card actorview"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:14px"><p class="sentence">'+a.n+' has <span class="blank">'+esc(ans.len||'___')+'</span>, <span class="blank">'+esc(ans.tex||'___')+'</span> hair <span class="blank">'+esc(ans.gl==='and glasses'?'and glasses':(ans.gl?'—':'___'))+'</span>.<br>'+a.n+' is wearing <span class="blank">'+esc(ans.wear||'___')+'</span>.</p>'+row('len','Hair length')+row('tex','Hair type')+row('gl','Glasses?')+row('wear','Clothes')+'<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn" id="chk">Check</button><button type="button" class="btn ghost" id="hear">Hear my sentence</button></div><div id="bfb"></div>'+AB('say_'+idx,'Now say your description aloud (or type it)',a.n+' has … hair. '+a.n+' is wearing …','describe',BUILD[idx])+'</div></div>';
     $$('[data-b]',m).forEach(function(b){b.onclick=function(){ans[b.dataset.b]=b.dataset.v;ans.ok=false;S.bd[idx]=ans;save();d()}});
     function sent(){return a.n+' has '+(ans.len||'')+', '+(ans.tex||'')+' hair'+(ans.gl==='and glasses'?' and glasses':'')+'. '+a.n+' is wearing '+(ans.wear||'')+'.'}
     $('#hear').onclick=function(){speak(sent(),this)};
     $('#chk').onclick=function(){var wrong=[];if(ans.len!==a.len)wrong.push('hair length');if(a.tex.indexOf(ans.tex)<0)wrong.push('hair type');if((ans.gl==='and glasses')!==a.gl)wrong.push('glasses');if(ans.wear!==a.wear)wrong.push('clothes');
       if(!wrong.length){ans.ok=true;S.bd[idx]=ans;save();$('#bfb').innerHTML='<div class="fb good">Great description! Say it aloud: “'+esc(sent())+'”</div>'+(idx<BUILD.length-1?'<div style="margin-top:10px"><button class="btn" type="button" id="nb">Next person</button></div>':'<div class="fb good" style="margin-top:8px">You described all four people. Press Next.</div>');var nb=$('#nb');if(nb)nb.onclick=function(){S.bi++;save();d()};$$('.dot',m)[idx].className='dot ok'}
       else $('#bfb').innerHTML='<div class="fb bad">Look again at: '+wrong.join(', ')+'.</div>'};
+    wireAB(m);bindInputs(m);
     if(ans.ok)$('#chk').click();
   }
   d();}},
@@ -385,9 +469,9 @@ var screens=[
   function d(){var a=A[S.ai],t=S.at[a.n]=S.at[a.n]||{tr:[]};
     m.innerHTML='<h2>Meet the actors</h2><p class="lead">Look, listen, and take notes. The actors do not say personality words — you decide!</p><div class="photos" style="grid-template-columns:repeat(7,minmax(0,1fr))">'+A.map(function(x,k){var done=S.at[x.n]&&S.at[x.n].tr.length;return '<button type="button" class="ph'+(k===S.ai?' sel':'')+'" data-a="'+k+'" aria-label="'+x.n+'"><img src="'+img(x)+'" alt="">'+(done?'<span>✓</span>':'')+'</button>'}).join('')+'</div>'+
     '<div class="card actorview"><img src="'+img(a)+'" alt="Photo of '+a.n+'"><div style="display:grid;gap:14px"><div><div class="small" style="font-weight:700;letter-spacing:.1em;text-transform:uppercase">Actor '+(S.ai+1)+' of 7</div><h2>'+a.n+'</h2></div><audio controls preload="none" src="audio/'+a.f+'_introduction.mp3"></audio>'+
-    '<div><label for="see">What do you see?</label><input type="text" id="see" value="'+esc(t.see||'')+'" placeholder="hair, glasses, clothes"></div><div><label for="do">What do they do?</label><input type="text" id="do" value="'+esc(t.do||'')+'" placeholder="actions you hear"></div><div><p class="small" style="margin-bottom:6px"><b>Personality words</b> — tap one or more</p><div class="chips">'+TRAITS.map(function(w){return '<button type="button" class="chip" data-t="'+w+'" aria-pressed="'+(t.tr.indexOf(w)>-1)+'">'+w+'</button>'}).join('')+'</div></div>'+
+    AB('see_'+a.n,'What do you see?','hair, glasses, clothes','see',a.n,60)+AB('do_'+a.n,'What do they do? (listen to the audio)','actions you hear','does',a.n,60)+'<div><div><p class="small" style="margin-bottom:6px"><b>Personality words</b> — tap one or more</p><div class="chips">'+TRAITS.map(function(w){return '<button type="button" class="chip" data-t="'+w+'" aria-pressed="'+(t.tr.indexOf(w)>-1)+'">'+w+'</button>'}).join('')+'</div></div>'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap">'+(S.ai>0?'<button type="button" class="btn ghost" id="pa">Previous actor</button>':'')+(S.ai<6?'<button type="button" class="btn" id="na">Next actor</button>':'<p class="fb good">All seven actors done? Press Next to cast the movie.</p>')+'</div></div></div>';
-    $('#see').oninput=function(){t.see=this.value;save()};$('#do').oninput=function(){t.do=this.value;save()};
+    if(t.see&&S['see_'+a.n]==null)S['see_'+a.n]=t.see;if(t.do&&S['do_'+a.n]==null)S['do_'+a.n]=t.do;bindInputs(m);wireAB(m);
     $$('[data-t]',m).forEach(function(b){b.onclick=function(){var w=b.dataset.t,k=t.tr.indexOf(w);if(k>-1)t.tr.splice(k,1);else t.tr.push(w);save();b.setAttribute('aria-pressed',k<0)}});
     $$('[data-a]',m).forEach(function(b){b.onclick=function(){S.ai=+b.dataset.a;save();d()}});
     var na=$('#na');if(na)na.onclick=function(){S.ai++;save();d();scrollTo(0,0)};var pa=$('#pa');if(pa)pa.onclick=function(){S.ai--;save();d();scrollTo(0,0)};
@@ -398,22 +482,22 @@ var screens=[
   S.cast=S.cast||{};S.why=S.why||{};
   function d(){var used=Object.keys(S.cast).map(function(k){return S.cast[k]});
     var left=A.filter(function(a){return used.indexOf(a.n)<0}).map(function(a){return a.n});
-    m.innerHTML='<h2>Cast the movie</h2><p class="lead">Tap one actor for each role. Give a reason from the audio.</p>'+ROLES.map(function(r,i){var c=S.cast[i];return '<div class="card role"><div class="rolehead">'+ICON[i]+'<div><b>'+r.r+'</b><p class="small">'+r.d+'</p></div></div><div class="thumbs">'+A.map(function(a){var u=used.indexOf(a.n)>-1&&c!==a.n;return '<button type="button" class="thumb'+(u?' used':'')+'" data-r="'+i+'" data-n="'+a.n+'" aria-pressed="'+(c===a.n)+'"><img src="'+img(a)+'" alt="">'+a.n+'</button>'}).join('')+'</div>'+(c?'<div><label for="why'+i+'">Why '+c+'? What did they say or do?</label><input type="text" id="why'+i+'" data-why="'+i+'" value="'+esc(S.why[i]||'')+'"></div>':'')+'</div>'}).join('')+
+    m.innerHTML='<h2>Cast the movie</h2><p class="lead">Tap one actor for each role. Give a reason from the audio.</p>'+ROLES.map(function(r,i){var c=S.cast[i];return '<div class="card role"><div class="rolehead">'+ICON[i]+'<div><b>'+r.r+'</b><p class="small">'+r.d+'</p></div></div><div class="thumbs">'+A.map(function(a){var u=used.indexOf(a.n)>-1&&c!==a.n;return '<button type="button" class="thumb'+(u?' used':'')+'" data-r="'+i+'" data-n="'+a.n+'" aria-pressed="'+(c===a.n)+'"><img src="'+img(a)+'" alt="">'+a.n+'</button>'}).join('')+'</div>'+(c?'<div><span class="fit '+fitOf(i,c)[0]+'">'+c+': '+fitOf(i,c)[1]+'</span></div>'+AB('why_'+i,'Why '+c+'? What did they say or do?',c+' fits because …','why',i,60):'')+'</div>'}).join('')+
     '<div class="card"><b>Not cast:</b> '+(used.length===5&&left.length===2?esc(left.join(' and ')):'<span class="small">Choose five different actors.</span>')+'</div>';
     $$('[data-r]',m).forEach(function(b){b.onclick=function(){var i=b.dataset.r;if(S.cast[i]===b.dataset.n)delete S.cast[i];else{Object.keys(S.cast).forEach(function(k){if(S.cast[k]===b.dataset.n)delete S.cast[k]});S.cast[i]=b.dataset.n}save();var y=scrollY;d();scrollTo(0,y)}});
-    $$('[data-why]',m).forEach(function(inp){inp.oninput=function(){S.why[inp.dataset.why]=inp.value;save()}});
+    bindInputs(m);wireAB(m);
   }
   d();}},
 
 {t:'Task 4 · Your pitch',draw:function(m){
-  var lines=ROLES.map(function(r,i){return S.cast[i]?'<li><b>'+esc(S.cast[i])+'</b> as '+r.r+(S.why&&S.why[i]?' — '+esc(S.why[i]):'')+'</li>':''}).join('');
+  var lines=ROLES.map(function(r,i){return S.cast[i]?'<li><b>'+esc(S.cast[i])+'</b> as '+r.r+(S['why_'+i]?' — '+esc(S['why_'+i]):'')+'</li>':''}).join('');
   m.innerHTML='<h2>Present your cast</h2>'+(lines?'<div class="card"><ul style="margin:0;padding-left:20px;display:grid;gap:6px">'+lines+'</ul></div>':'<p class="note">Go back and cast the movie first.</p>')+
-  '<div class="phr"><b>Pitch frames</b>We choose ___ for the role of ___ because ___. · They have ___ hair and are wearing ___. · In the introduction, they said they ___. · We think they seem ___ because ___. · We did not cast ___ because ___.</div><div><label for="pitch">Our pitch</label><textarea id="pitch" data-k="pitch" style="min-height:130px"></textarea></div><div class="phr"><b>Discuss</b>I agree because… · I have a different choice because… · Which action shows that? · Another actor could fit because…</div>'+
+  '<div class="phr"><b>Pitch frames</b>We choose ___ for the role of ___ because ___. · They have ___ hair and are wearing ___. · In the introduction, they said they ___. · We think they seem ___ because ___. · We did not cast ___ because ___.</div><div class="card">'+AB('pitch','Our pitch — say it or write it','We choose … for the role of … because …','pitch',null,130)+'</div><div class="phr"><b>Discuss</b>I agree because… · I have a different choice because… · Which action shows that? · Another actor could fit because…</div>'+
   '<div class="card" style="display:grid;gap:10px"><h3>Finished?</h3><p>Copy your answers and paste them where your teacher asks. Then press <b>Next</b> to get your certificate.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" id="copy">Copy my answers</button><a class="btn ghost" href="handouts/Student_Activity_Packet.pdf" target="_blank" rel="noopener" style="text-decoration:none">Printable packet (PDF)</a></div><span id="cmsg" class="small" aria-live="polite"></span><textarea id="cout" hidden readonly style="min-height:180px"></textarea></div><p class="small">The actors, portraits, and audio are fictional and were created for this classroom activity.</p>';
-  bindInputs(m);
-  $('#copy').onclick=function(){var L=['THE LAST CALL — '+(S.name||'(no name)'),'','Task 1 · I notice '+(S.poll||'—')+' first.',S.t1notes?'Notes: '+S.t1notes:'','','Task 2 score: '+score('t2q')+' / 6','About me: I am '+(S.meWord||'___')+' because I '+(S.meWhy||'___'),'','Task 3 · has/is wearing: '+score('hw')+' / 4 · Find the person: '+score('find')+' / 6','','Actor notes:'];
-    A.forEach(function(a){var t=(S.at||{})[a.n]||{tr:[]};L.push('- '+a.n+' | see: '+(t.see||'')+' | does: '+(t.do||'')+' | traits: '+t.tr.join(', '))});
-    L.push('','Cast:');ROLES.forEach(function(r,i){L.push('- '+r.r+': '+(S.cast[i]||'—')+(S.why&&S.why[i]?' ('+S.why[i]+')':''))});
+  bindInputs(m);wireAB(m);
+  $('#copy').onclick=function(){var L=['THE LAST CALL — '+(S.name||'(no name)'),'','Task 1 · I notice '+(S.poll||'—')+' first.',S.t1notes?'Discussion: '+S.t1notes:'','','Task 2 score: '+score('t2q')+' / 6','About me: I am '+(S.meWord||'___')+' because I '+(S.meWhy||'___'),'','Task 3 · has/is wearing: '+score('hw')+' / 4 · Find the person: '+score('find')+' / 6','','Actor notes:'];
+    A.forEach(function(a){var t=(S.at||{})[a.n]||{tr:[]};L.push('- '+a.n+' | see: '+(S['see_'+a.n]||t.see||'')+' | does: '+(S['do_'+a.n]||t.do||'')+' | traits: '+t.tr.join(', '))});
+    L.push('','Cast:');ROLES.forEach(function(r,i){L.push('- '+r.r+': '+(S.cast[i]||'—')+(S['why_'+i]?' ('+S['why_'+i]+')':''))});
     L.push('','Pitch: '+(S.pitch||''));var txt=L.join('\n'),o=$('#cout'),msg=$('#cmsg');o.value=txt;
     function fb(){o.hidden=false;o.focus();o.select();msg.textContent='Select all the text and copy it.'}
     try{navigator.clipboard.writeText(txt).then(function(){msg.textContent='Copied! Now paste it for your teacher.'},fb)}catch(e){fb()}};}},
@@ -454,7 +538,7 @@ var SAY=null,cur=Math.min(S.cur||0,screens.length-1);
 function bindInputs(root){$$('[data-k]',root).forEach(function(el){if(S[el.dataset.k]!=null)el.value=S[el.dataset.k];el.addEventListener('input',function(){S[el.dataset.k]=el.value;save()})})}
 function wire(root){$$('[data-say]',root).forEach(function(b){b.onclick=function(){var t=SAY&&SAY(b.dataset.say);if(!t)return;var vm=b.closest('.vm');if(vm){vm.classList.add('playing');setTimeout(function(){vm.classList.remove('playing')},14000)}speak(t,b)}})}
 function go(i){try{speechSynthesis.cancel()}catch(e){}cur=Math.max(0,Math.min(screens.length-1,i));S.cur=cur;save();render();scrollTo(0,0)}
-function render(){SAY=null;var sc=screens[cur],m=$('#app');m.innerHTML='';var d=document.createElement('div');d.className='screen';m.appendChild(d);sc.draw(d);bindInputs(d);wire(d);
+function render(){SAY=null;var sc=screens[cur],m=$('#app');m.innerHTML='';var d=document.createElement('div');d.className='screen';m.appendChild(d);sc.draw(d);bindInputs(d);wire(d);wireAB(d);
   $('#tLabel').textContent=sc.t;$('#tCount').textContent='Step '+(cur+1)+' of '+screens.length;$('#fill').style.width=((cur+1)/screens.length*100)+'%';
   $('#back').disabled=cur===0;$('#next').textContent=cur===screens.length-1?'Back to start':(cur===0?'Start':'Next');}
 $('#back').onclick=function(){go(cur-1)};
